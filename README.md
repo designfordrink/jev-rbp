@@ -4,13 +4,11 @@
 
 > **VLNS ищет решение. LLM ищет алгоритм, которым VLNS будет искать решение. JEV ищет хорошие локальные действия внутри этого алгоритма.**
 
-## Project status
+## Status
 
-Early research / experimental.
+**Phase 0 — repository foundation.**
 
-The first milestone is deliberately narrow: test whether a small learned selector can improve or accelerate local action selection inside an existing VLNS search loop.
-
-This repository is **not** intended to replace VLNS, MIP, or the RBP validator with an LLM.
+The repository now contains the research specification, experiment protocol, Python package scaffold, typed core interfaces, tests, and CI. The actual RBP/VLNS implementation is intentionally not yet connected.
 
 ## Architecture
 
@@ -30,13 +28,26 @@ This repository is **not** intended to replace VLNS, MIP, or the RBP validator w
             local action
                   │
                   ▼
+          exact evaluator
+                  │
+                  ▼
               Validator
                   │
                   ▼
               Benchmark
-                  │
-                  ▼
-                Score
+```
+
+JEV is a **selector, not the source of truth**. Candidate legality belongs to the search/problem layer, exact evaluation determines the actual effect, and the validator independently determines feasibility.
+
+## Local development
+
+Requires Python 3.11+.
+
+```bash
+python -m pip install -e ".[dev]"
+pytest -q
+ruff check .
+jev-rbp
 ```
 
 ## Research ladder
@@ -52,22 +63,13 @@ This repository is **not** intended to replace VLNS, MIP, or the RBP validator w
 9. Let LLM generate new search heuristics
 10. Evolve toward JEV-Star
 
-See [PRD.md](PRD.md) and [PLAN.md](PLAN.md).
-
-## Core principle
-
-JEV is a **selector**, not the source of truth.
-
-Candidate legality is determined by the problem/search layer. Exact evaluation determines the actual effect of an action. The validator independently determines feasibility.
-
-This separation makes the experiments measurable and scientifically reproducible.
+See [PRD.md](PRD.md), [PLAN.md](PLAN.md), [docs/architecture.md](docs/architecture.md), and [docs/experiments.md](docs/experiments.md).
 
 ## References
 
-- RBP competition / specification: use the authoritative competition materials for the exact benchmark and validator semantics.
-- Nicolas Bridelance's public RBP experiments:
-  - [Railroad Blocking MIP Pyomo HiGHS](https://www.kaggle.com/code/nbridelancetb/railroad-blocking-mip-pyomo-highs)
-  - [Railroad Blocking VLNS Metaheuristic](https://www.kaggle.com/code/nbridelancetb/railroad-blocking-vlns-metaheuristic)
+- [Nicolas Bridelance — Railroad Blocking VLNS Metaheuristic](https://www.kaggle.com/code/nbridelancetb/railroad-blocking-vlns-metaheuristic)
+- [Nicolas Bridelance — Railroad Blocking MIP Pyomo HiGHS](https://www.kaggle.com/code/nbridelancetb/railroad-blocking-mip-pyomo-highs)
+- [Public validator/diagnostics implementation](https://github.com/AnniceNajafi/rasblocking)
 
 ## License
 
