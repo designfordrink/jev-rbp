@@ -1,122 +1,178 @@
 # JEV-RBP — Project Plan
 
-## Current status
+## Current checkpoint
 
-**Phase 3 — Vanilla VLNS reproduction (seed baseline)**
+**Phase 3B — service graph and rerouting boundary implemented.**
 
-Phase 3A archaeology is complete: the RAS v2.1 public mirror, schemas, validator, scoring package, and solution contract have been frozen in `docs/benchmark-archaeology.md`.
+PR #1, which corrected physical-network routing semantics, has been merged.
+The next clean-room layer is now implemented:
 
-Completed:
-- Phase 0 repository foundation.
-- Phase 1 canonical RBP model/specification.
-- Phase 2 behavioral archaeology of the public reference VLNS.
-- Typed Drop/Add/Swap action boundary.
-- Routing and exact-evaluation boundaries.
-- Best-improving VLNS orchestration shell.
-- Deterministic selector baselines.
-- Tests for the new boundaries.
+- directed block-service graph;
+- commodity routing over opened blocks;
+- physical-route caching;
+- all-demand rerouting;
+- block-volume aggregation;
+- unused-block pruning;
+- reference-shaped Drop → Add → conditional Swap orchestration;
+- regression tests for the above.
 
-The reference notebook is a Kaggle artifact. Its documented behavior is sufficient to freeze the algorithmic control flow, but exact internal function names, data structures, filters and tie-breaking are not yet claimed as reproduced.
+The repository still does **not** claim full benchmark equivalence.
 
-## Phase 2 — Baseline archaeology
+## Phase 0 — Repository foundation
 
-### Done
+- [x] repository;
+- [x] PRD;
+- [x] development environment;
+- [x] CI;
+- [x] basic package/tests.
+
+## Phase 1 — Canonical model
+
+- [x] RBP data model;
+- [x] GMNS CSV loader;
+- [x] commodity/block type model;
+- [x] scenario settings;
+- [x] typed actions.
+
+## Phase 2 — Reference archaeology
 
 - [x] recover public reference behavior;
 - [x] identify Drop/Add/Swap;
-- [x] identify best-improving control flow;
-- [x] identify Dijkstra-based routing boundary;
-- [x] identify objective/acceptance boundary;
-- [x] map reference behavior to JEV-RBP modules;
-- [x] record provenance and uncertainty;
-- [x] freeze typed search-loop interfaces.
+- [x] recover phase-ordered control flow;
+- [x] recover Dijkstra routing boundary;
+- [x] recover objective/acceptance boundary;
+- [x] preserve provenance and uncertainty;
+- [x] freeze typed interfaces.
 
-### Remaining
-
-- [x] recover exact notebook source/runtime where possible;
-- [ ] identify exact candidate-generation filters;
-- [ ] identify exact tie-breaking;
-- [ ] identify routing caches/implementation optimizations;
-- [ ] identify exact stopping semantics;
-- [ ] reproduce one small reference run.
+Remaining archaeology:
+- [ ] exact candidate filters;
+- [ ] exact tie-breaking;
+- [ ] exact routing caches/optimizations;
+- [ ] deterministic reference run;
+- [ ] any remaining benchmark/reference discrepancies.
 
 ## Phase 3 — Vanilla VLNS reproduction
 
-### Tasks
+### 3A — Benchmark archaeology
 
-- [x] dataset loader;
-- [x] minimal greedy seed;
-- [ ] Drop;
-- [ ] Add;
-- [ ] Swap;
-- [x] exact physical shortest-path routing;
-- [x] initial objective components (fixed block + transport);
-- [x] independent structural validator for the seed;
-- [ ] stopping criteria;
-- [ ] benchmark runner.
+- [x] identify public RAS v2.1 mirror;
+- [x] recover CSV schemas;
+- [x] recover solution JSON schema;
+- [x] inspect validator C1–C9b;
+- [x] freeze objective/stress-score semantics.
 
-### Phase 3 checkpoint
+### 3B — Search and routing
 
-The repository now has an executable seed path: GMNS CSVs → typed RBP instance → Dijkstra shortest path → direct-block greedy solution → structural validation → objective calculation.
+- [x] physical shortest-path router;
+- [x] physical links treated bidirectionally for routing;
+- [x] directed block-service graph;
+- [x] commodity-type-compatible service routing;
+- [x] all-demand rerouting;
+- [x] block-volume aggregation;
+- [x] unused-block pruning;
+- [x] reference Drop/Add/Swap phase ordering;
+- [x] regression tests.
 
-This is deliberately **not yet a full reference VLNS reproduction**. Drop/Add/Swap over the blocking-service graph and the full benchmark objective/constraint set remain next.
+### 3C — Exact move evaluation
 
-### Exit criteria
+- [ ] generate legal Drop candidates;
+- [ ] generate legal Add candidates;
+- [ ] generate legal Swap candidates;
+- [ ] apply candidate virtually;
+- [ ] reroute;
+- [ ] calculate exact objective delta;
+- [ ] check reference move-level feasibility;
+- [ ] reproduce acceptance tolerance;
+- [ ] reproduce stopping semantics.
 
-A small public instance can be solved end-to-end and the result can be independently validated.
+### 3D — Benchmark authority
 
-## Phase 4 — Validator
+- [ ] full independent C1–C9b validator;
+- [ ] complete fixed + transport + handling + interchange objective;
+- [ ] link-capacity-aware physical routing;
+- [ ] stress score;
+- [ ] solution serializer/parser compatibility.
 
-- [ ] implement C1–C9b;
-- [ ] negative tests;
-- [ ] property tests;
-- [ ] edge cases.
+### 3E — Reproduction
 
-## Phase 5 — Instrumentation
+- [ ] reproduce a deterministic small reference instance;
+- [ ] compare objective components;
+- [ ] compare selected moves;
+- [ ] document any irreducible differences.
 
-- [ ] JSONL trace writer;
-- [ ] state hashing;
+## Phase 4 — Instrumentation
+
+- [ ] JSONL search trace;
+- [ ] state hash;
 - [ ] candidate IDs;
-- [ ] timing;
 - [ ] exact evaluation counter;
-- [ ] experiment metadata.
+- [ ] timing;
+- [ ] experiment metadata;
+- [ ] reproducible run directory.
 
-## Phase 6 — Candidate Generator
+## Phase 5 — Candidate quality
 
-- [ ] Drop/Add/Swap candidate generation;
-- [ ] cheap feasibility filters;
-- [ ] deterministic ordering;
-- [ ] candidate-pool statistics.
+- [ ] measure candidate-pool size;
+- [ ] measure legal/illegal ratio;
+- [ ] measure how often best exact move is present;
+- [ ] characterize Drop/Add/Swap separately.
 
-## Phase 7 — Selector baselines
+## Phase 6 — Selector baselines
 
-- [ ] Random;
-- [ ] Greedy;
-- [ ] Oracle best;
-- [ ] JEV placeholder.
+- [x] Random;
+- [x] Identity;
+- [ ] hand-designed Greedy selector;
+- [ ] exact Oracle selector;
+- [ ] common evaluation-budget harness.
 
-## Phase 8 — JEV dataset
+## Phase 7 — JEV dataset
 
-- [ ] trace exporter;
-- [ ] instance-level train/validation/test split;
-- [ ] feature schema/versioning;
-- [ ] frozen dataset.
+- [ ] collect vanilla VLNS traces;
+- [ ] define feature schema;
+- [ ] split by instance, not by row;
+- [ ] freeze dataset version;
+- [ ] record exact deltas and feasibility labels.
 
-## Phase 9 — JEV v0
+## Phase 8 — JEV v0
 
 - [ ] linear scorer;
 - [ ] shallow MLP;
 - [ ] pairwise ranker;
-- [ ] Top-K/regret metrics.
+- [ ] Top-K hit rate;
+- [ ] regret;
+- [ ] ranking correlation.
 
-## Phase 10 — JEV-VLNS
+## Phase 9 — JEV-VLNS
 
-- [ ] Top-1/5/10;
-- [ ] same candidate generator;
-- [ ] same evaluator;
-- [ ] same validator;
-- [ ] same budget.
+- [ ] Top-1;
+- [ ] Top-5;
+- [ ] Top-10;
+- [ ] fixed evaluation budget comparison;
+- [ ] runtime comparison;
+- [ ] quality comparison;
+- [ ] multiple seeds.
 
-## Later
+## Phase 10 and later
 
-Phase 11 generalization → Phase 12 MIP oracle → Phase 13 destroy selector → Phase 14 LLM-generated neighborhoods → Phase 15 heuristic evolution → Phase 16 JEV-Star.
+- [ ] MIP teacher on small instances;
+- [ ] generalization to larger instances;
+- [ ] JEV destroy-selection;
+- [ ] LLM-generated neighborhoods;
+- [ ] heuristic evolution;
+- [ ] JEV-Star.
+
+## Scientific rule
+
+At every JEV comparison, keep constant:
+
+- instance;
+- initial solution;
+- candidate generator;
+- exact evaluator;
+- validator;
+- compute/evaluation budget.
+
+Only the selector should change.
+
+A JEV model that obtains a better objective by simply spending more exact
+evaluations is not, by itself, evidence that the selector is better.
