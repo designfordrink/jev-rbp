@@ -6,9 +6,9 @@
 
 ## Status
 
-**Phase 0 — repository foundation.**
+**Phase 3A — RAS public benchmark archaeology complete.**
 
-The repository now contains the research specification, experiment protocol, Python package scaffold, typed core interfaces, tests, and CI. The actual RBP/VLNS implementation is intentionally not yet connected.
+The repository now contains the research specification, experiment protocol, Python package scaffold, typed core interfaces, seed RBP implementation, and the frozen RAS v2.1 benchmark contract. The next implementation step is to reconcile `problem.py` with the benchmark's solution/validator semantics before implementing full Drop/Add/Swap VLNS.
 
 ## Architecture
 
@@ -63,7 +63,7 @@ jev-rbp
 9. Let LLM generate new search heuristics
 10. Evolve toward JEV-Star
 
-See [PRD.md](PRD.md), [PLAN.md](PLAN.md), [docs/architecture.md](docs/architecture.md), and [docs/experiments.md](docs/experiments.md).
+See [PRD.md](PRD.md), [PLAN.md](PLAN.md), [docs/architecture.md](docs/architecture.md), [docs/benchmark-archaeology.md](docs/benchmark-archaeology.md), and [docs/experiments.md](docs/experiments.md).
 
 ## References
 
