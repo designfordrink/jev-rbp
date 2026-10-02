@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from jev_rbp.actions import AddAction, DropAction, SwapAction
 from jev_rbp.core import Evaluation, ValidationResult
+from jev_rbp.problem import CommodityType
 from jev_rbp.vlns import ReferenceVLNSSolver, VLNSConfig
 
 
@@ -15,8 +16,8 @@ class Generator:
         if phase == "drop":
             return [DropAction(1)]
         if phase == "add":
-            return [AddAction(1, 2, "Merchandise")]
-        return [SwapAction(1, 2, 3, "Merchandise")]
+            return [AddAction(1, 2, CommodityType.MERCHANDISE)]
+        return [SwapAction(1, 2, 3, CommodityType.MERCHANDISE)]
 
 
 class Evaluator:
