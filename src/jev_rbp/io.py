@@ -15,15 +15,13 @@ def _bool(value: str) -> bool:
 def load_instance(directory: str | Path) -> RBPInstance:
     root = Path(directory)
 
-    nodes: dict[int, Node] = {}
+    nodes = {}
     with (root / "node.csv").open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             node_id = int(row["node_id"])
             nodes[node_id] = Node(
-                node_id=node_id,
-                node_type=row.get("node_type", ""),
-                name=row.get("name", ""),
-                yard_type=row.get("yard_type", ""),
+                node_id=node_id, node_type=row.get("node_type", ""),
+                name=row.get("name", ""), yard_type=row.get("yard_type", ""),
                 yard_level=int(float(row.get("yard_level", -1) or -1)),
                 railroad_id=row.get("railroad_id", ""),
                 num_tracks=float(row.get("num_tracks", 0) or 0),
@@ -32,35 +30,30 @@ def load_instance(directory: str | Path) -> RBPInstance:
                 is_interchange=_bool(row.get("is_interchange", "False")),
             )
 
-    links: dict[int, Link] = {}
+    links = {}
     with (root / "link.csv").open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             link_id = int(row["link_id"])
             links[link_id] = Link(
-                link_id=link_id,
-                from_node_id=int(row["from_node_id"]),
-                to_node_id=int(row["to_node_id"]),
-                length=float(row["length"]),
-                capacity=float(row["capacity"]),
-                railroad_id=row.get("railroad_id", ""),
+                link_id=link_id, from_node_id=int(row["from_node_id"]),
+                to_node_id=int(row["to_node_id"]), length=float(row["length"]),
+                capacity=float(row["capacity"]), railroad_id=row.get("railroad_id", ""),
             )
 
-    demands: dict[int, Demand] = {}
+    demands = {}
     with (root / "demand.csv").open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             demand_id = int(row["demand_id"])
             demands[demand_id] = Demand(
-                demand_id=demand_id,
-                origin_yard_id=int(row["origin_yard_id"]),
-                dest_yard_id=int(row["dest_yard_id"]),
-                volume=int(row["volume"]),
+                demand_id=demand_id, origin_yard_id=int(row["origin_yard_id"]),
+                dest_yard_id=int(row["dest_yard_id"]), volume=int(row["volume"]),
                 commodity_type=CommodityType(row["block_type"]),
             )
 
     settings = Settings()
     setting_path = root / "setting.csv"
     if setting_path.exists():
-        values: dict[str, str] = {}
+        values = {}
         with setting_path.open(newline="", encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 key = row.get("parameter") or row.get("name") or row.get("setting")
