@@ -30,3 +30,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+exclude = ["data/reference/archive"]
+
+[tool.ruff.lint]
+select = ["E", "F"]

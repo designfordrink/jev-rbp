@@ -1,4 +1,8 @@
-"""Dijkstra routing over the physical GMNS network."""
+"""Dijkstra routing over the physical GMNS network.
+
+The RAS reference treats physical links as bidirectional. The service/block
+graph is directed and is built separately by the VLNS evaluator.
+"""
 
 from __future__ import annotations
 
@@ -23,9 +27,16 @@ class RoutingEngine(Protocol):
 class DijkstraRouter:
     def __init__(self, instance: RBPInstance) -> None:
         self.instance = instance
-        self._outgoing = {}
+        # Physical links are bidirectional for shortest-path purposes.
+        # Keep the original link_id when traversing a record in either direction.
+        self._adjacency: dict[int, list[tuple[int, float, int]]] = {}
         for link in instance.links.values():
-            self._outgoing.setdefault(link.from_node_id, []).append(link)
+            self._adjacency.setdefault(link.from_node_id, []).append(
+                (link.to_node_id, link.length, link.link_id)
+            )
+            self._adjacency.setdefault(link.to_node_id, []).append(
+                (link.from_node_id, link.length, link.link_id)
+            )
 
     def shortest_path(self, from_yard_id: int, to_yard_id: int) -> Route | None:
         if from_yard_id == to_yard_id:
@@ -33,7 +44,7 @@ class DijkstraRouter:
 
         heap = [(0.0, from_yard_id)]
         distance = {from_yard_id: 0.0}
-        previous = {}
+        previous: dict[int, tuple[int, int]] = {}
 
         while heap:
             cost, node = heapq.heappop(heap)
@@ -41,24 +52,26 @@ class DijkstraRouter:
                 continue
             if node == to_yard_id:
                 break
-            for link in self._outgoing.get(node, ()):
-                new_cost = cost + link.length
-                if new_cost < distance.get(link.to_node_id, float("inf")):
-                    distance[link.to_node_id] = new_cost
-                    previous[link.to_node_id] = (node, link.link_id)
-                    heapq.heappush(heap, (new_cost, link.to_node_id))
+
+            for neighbor, length, link_id in self._adjacency.get(node, ()):
+                new_cost = cost + length
+                if new_cost < distance.get(neighbor, float("inf")):
+                    distance[neighbor] = new_cost
+                    previous[neighbor] = (node, link_id)
+                    heapq.heappush(heap, (new_cost, neighbor))
 
         if to_yard_id not in distance:
             return None
 
         nodes = [to_yard_id]
-        links = []
+        links: list[int] = []
         current = to_yard_id
         while current != from_yard_id:
             parent, link_id = previous[current]
             links.append(link_id)
             nodes.append(parent)
             current = parent
+
         nodes.reverse()
         links.reverse()
         return Route(tuple(nodes), tuple(links), distance[to_yard_id])
