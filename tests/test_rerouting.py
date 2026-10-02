@@ -29,7 +29,7 @@ def test_reroute_aggregates_block_volume_and_drops_unused_blocks():
     open_blocks = {
         10: Block(10, 1, 2, BlockType.MANIFEST),
         11: Block(11, 2, 3, BlockType.MANIFEST),
-        12: Block(12, 1, 3, BlockType.MANIFEST),
+        12: Block(12, 3, 1, BlockType.MANIFEST),
     }
 
     result = reroute(inst, open_blocks, DijkstraRouter(inst))
