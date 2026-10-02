@@ -4,6 +4,8 @@
 
 **Phase 3 — Vanilla VLNS reproduction (seed baseline)**
 
+Phase 3A archaeology is complete: the RAS v2.1 public mirror, schemas, validator, scoring package, and solution contract have been frozen in `docs/benchmark-archaeology.md`.
+
 Completed:
 - Phase 0 repository foundation.
 - Phase 1 canonical RBP model/specification.
