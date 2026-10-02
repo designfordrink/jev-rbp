@@ -14,6 +14,7 @@ def test_physical_links_are_bidirectional():
                 from_node_id=1,
                 to_node_id=2,
                 length=7.0,
+                capacity=1.0,
             )
         },
         demands={},
