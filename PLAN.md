@@ -2,7 +2,7 @@
 
 ## Current status
 
-**Phase 2 — Baseline archaeology / control-flow freeze**
+**Phase 3 — Vanilla VLNS reproduction (seed baseline)**
 
 Completed:
 - Phase 0 repository foundation.
@@ -31,7 +31,7 @@ The reference notebook is a Kaggle artifact. Its documented behavior is sufficie
 
 ### Remaining
 
-- [ ] recover exact notebook source/runtime where possible;
+- [x] recover exact notebook source/runtime where possible;
 - [ ] identify exact candidate-generation filters;
 - [ ] identify exact tie-breaking;
 - [ ] identify routing caches/implementation optimizations;
@@ -42,16 +42,22 @@ The reference notebook is a Kaggle artifact. Its documented behavior is sufficie
 
 ### Tasks
 
-- [ ] dataset loader;
-- [ ] greedy initial solution;
+- [x] dataset loader;
+- [x] minimal greedy seed;
 - [ ] Drop;
 - [ ] Add;
 - [ ] Swap;
-- [ ] exact routing;
-- [ ] objective;
-- [ ] independent validator;
+- [x] exact physical shortest-path routing;
+- [x] initial objective components (fixed block + transport);
+- [x] independent structural validator for the seed;
 - [ ] stopping criteria;
 - [ ] benchmark runner.
+
+### Phase 3 checkpoint
+
+The repository now has an executable seed path: GMNS CSVs → typed RBP instance → Dijkstra shortest path → direct-block greedy solution → structural validation → objective calculation.
+
+This is deliberately **not yet a full reference VLNS reproduction**. Drop/Add/Swap over the blocking-service graph and the full benchmark objective/constraint set remain next.
 
 ### Exit criteria
 
