@@ -1,4 +1,4 @@
-"""Canonical, solver-independent RBP data model."""
+"""Canonical, solver-independent RBP data model aligned with RAS v2.1."""
 
 from __future__ import annotations
 
@@ -14,11 +14,46 @@ class CommodityType(StrEnum):
     AUTOMOBILE = "Automobile"
 
 
+class BlockType(StrEnum):
+    MANIFEST = "Manifest"
+    BULK = "Bulk"
+    INTERMODAL = "Intermodal"
+    MULTILEVEL = "Multilevel"
+
+
+DIRECT_ONLY_COMMODITIES = frozenset({
+    CommodityType.INTERMODAL,
+    CommodityType.AUTOMOBILE,
+})
+
+CLASSIFICATION_BLOCK_TYPES = frozenset({
+    BlockType.MANIFEST,
+    BlockType.BULK,
+    # RAS v2.0/v2.1 validator explicitly counts coal/grain classification
+    # blocks. Those are demand-derived labels in the benchmark; keep the
+    # explicit enum values available through BlockType for solution output.
+})
+
+
+def default_block_type(commodity_type: CommodityType) -> BlockType:
+    if commodity_type is CommodityType.MERCHANDISE:
+        return BlockType.MANIFEST
+    if commodity_type in (CommodityType.COAL, CommodityType.GRAIN):
+        return BlockType.BULK
+    if commodity_type is CommodityType.INTERMODAL:
+        return BlockType.INTERMODAL
+    if commodity_type is CommodityType.AUTOMOBILE:
+        return BlockType.MULTILEVEL
+    raise ValueError(f"Unsupported commodity type: {commodity_type}")
+
+
 @dataclass(frozen=True)
 class Node:
     node_id: int
     node_type: str
     name: str = ""
+    x_coord: float = 0.0
+    y_coord: float = 0.0
     yard_type: str = ""
     yard_level: int = -1
     railroad_id: str = ""
@@ -26,6 +61,9 @@ class Node:
     handling_capacity: float = 0.0
     handling_cost: float = 0.0
     is_interchange: bool = False
+    allowed_commodities: str = ""
+    allowed_traversal: str = ""
+    datasource: str = ""
 
 
 @dataclass(frozen=True)
@@ -36,6 +74,9 @@ class Link:
     length: float
     capacity: float
     railroad_id: str = ""
+    free_speed: float = 0.0
+    tracks: float = 0.0
+    geometry: str = ""
 
 
 @dataclass(frozen=True)
@@ -45,6 +86,9 @@ class Demand:
     dest_yard_id: int
     volume: int
     commodity_type: CommodityType
+
+    def effective_volume(self, settings: "Settings") -> float:
+        return float(self.volume) * settings.demand_multiplier
 
 
 @dataclass(frozen=True)
@@ -66,8 +110,8 @@ class Block:
     block_id: int
     from_yard_id: int
     to_yard_id: int
-    commodity_type: CommodityType
-    volume: float
+    block_type: BlockType
+    volume: float = 0.0
 
 
 @dataclass(frozen=True)
