@@ -32,7 +32,9 @@ def test_service_graph_routes_through_blocks():
     blocks = [
         Block(10, 1, 2, BlockType.MANIFEST),
         Block(11, 2, 3, BlockType.MANIFEST),
-        Block(12, 1, 3, BlockType.MANIFEST),
+        # Reverse-direction block is physically reachable but not usable for
+        # the 1 -> 3 directed service route.
+        Block(12, 3, 1, BlockType.MANIFEST),
     ]
 
     route = BlockServiceRouter(inst, DijkstraRouter(inst)).route(
