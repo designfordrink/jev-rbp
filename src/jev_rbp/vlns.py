@@ -8,7 +8,8 @@ will be implemented behind these interfaces.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Protocol, Sequence
+from collections.abc import Sequence
+from typing import Protocol
 
 from .core import CandidateAction, Evaluation, ValidationResult
 
