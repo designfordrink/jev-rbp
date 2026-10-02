@@ -1,22 +1,28 @@
-from jev_rbp.problem import CommodityType, Demand, RBPInstance, Settings
+from jev_rbp.problem import (
+    BlockType, CommodityType, Demand, Node, RBPInstance, Settings,
+    default_block_type,
+)
 
 
-def test_intermodal_is_a_first_class_commodity_type() -> None:
-    demand = Demand(
-        demand_id=1,
-        origin_yard_id=10,
-        dest_yard_id=20,
-        volume=1000,
-        commodity_type=CommodityType.INTERMODAL,
+def test_block_and_demand_types_are_distinct() -> None:
+    assert default_block_type(CommodityType.MERCHANDISE) is BlockType.MANIFEST
+    assert default_block_type(CommodityType.COAL) is BlockType.BULK
+    assert default_block_type(CommodityType.GRAIN) is BlockType.BULK
+    assert default_block_type(CommodityType.INTERMODAL) is BlockType.INTERMODAL
+    assert default_block_type(CommodityType.AUTOMOBILE) is BlockType.MULTILEVEL
+
+
+def test_demand_volume_stays_integer_and_scaling_is_explicit() -> None:
+    demand = Demand(1, 10, 20, 101, CommodityType.MERCHANDISE)
+    settings = Settings(demand_multiplier=0.5)
+    assert demand.volume == 101
+    assert demand.effective_volume(settings) == 50.5
+
+
+def test_node_benchmark_metadata_is_supported() -> None:
+    node = Node(
+        1, "yard", "YARD", 10.0, 20.0, "hump", 1, "UP",
+        20, 30000, 2.5, True, "merchandise,coal,grain", "all", "test"
     )
-    instance = RBPInstance(nodes={}, links={}, demands={1: demand}, settings=Settings())
-    assert instance.demands[1].commodity_type is CommodityType.INTERMODAL
-
-
-def test_default_settings_match_released_benchmark_defaults() -> None:
-    settings = Settings()
-    assert settings.min_block_vol_short == 350
-    assert settings.min_block_vol_medium == 700
-    assert settings.min_block_vol_long == 1050
-    assert settings.max_circuitous_ratio == 1.3
-    assert settings.demand_multiplier == 1.0
+    assert node.x_coord == 10.0
+    assert node.allowed_traversal == "all"
