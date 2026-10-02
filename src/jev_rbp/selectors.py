@@ -25,5 +25,7 @@ class RandomSelector:
 class IdentitySelector:
     """Preserve candidate order; useful as a deterministic baseline."""
 
-    def rank(self, state: object, candidates: Sequence[CandidateAction]) -> Sequence[CandidateAction]:
+    def rank(
+        self, state: object, candidates: Sequence[CandidateAction]
+    ) -> Sequence[CandidateAction]:
         return list(candidates)
