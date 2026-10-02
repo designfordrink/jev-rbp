@@ -1,92 +1,71 @@
 # JEV-RBP Architecture
 
-## 1. Boundary between search and judgment
+## Current boundary
 
-JEV-RBP separates four responsibilities:
+Phase 2 freezes the control-flow boundary before the real solver is implemented.
 
-1. **Candidate generation** — determines which actions are legal and worth considering.
-2. **JEV selector** — ranks candidates cheaply.
-3. **Exact evaluator** — computes the actual objective effect of an action.
-4. **Validator** — independently decides whether the resulting solution is feasible.
-
-The selector is therefore never an authority.
-
-```
-state
-  |
-  v
-candidate generator
-  |
-  v
-legal candidates
-  |
-  +------> JEV ------> ranking
-  |                     |
-  |                     v
-  +-----------------> Top-K
-                        |
-                        v
-                 exact evaluation
-                        |
-                        v
-                    validator
-                        |
-                        v
-                     accept
+```text
+RBP instance
+    |
+    v
+Search state
+    |
+    v
+Candidate generator
+    +--------------------+
+    |                    |
+    v                    v
+Selector              Exact evaluator
+    |                    |
+    v                    |
+ranked candidates        |
+    |                    |
+    +--------> Top-K ----+
+                         |
+                         v
+                     Validator
+                         |
+                         v
+                       Apply
+                         |
+                         v
+                    next state
 ```
 
-## 2. Why this boundary matters
+For the vanilla baseline, all generated candidates are exactly evaluated and the best improving move is applied.
 
-A learned selector can be wrong. That is acceptable because it is not allowed to certify feasibility or objective value.
+For JEV-VLNS, the intended change is the selector/ranking stage only. The exact evaluator, validator, candidate generator and acceptance semantics remain controlled.
 
-This gives the first prototype a clean failure mode:
+## Module boundaries
 
-- bad candidate generation -> the useful action is absent;
-- bad JEV ranking -> the useful action is ranked too low;
-- bad exact evaluator -> solver correctness is broken;
-- bad validator -> experiment correctness is broken.
+| Module | Responsibility |
+|---|---|
+| src/jev_rbp/problem.py | canonical RBP data model |
+| src/jev_rbp/actions.py | typed Drop/Add/Swap actions |
+| src/jev_rbp/routing.py | physical-network routing boundary |
+| src/jev_rbp/evaluation.py | authoritative move evaluation boundary |
+| src/jev_rbp/vlns.py | best-improving search orchestration |
+| src/jev_rbp/selectors.py | Random/identity baselines and future JEV |
+| future validator.py | independent feasibility authority |
 
-These failure modes must be measured separately.
+## Critical invariant
 
-## 3. Core interfaces
+JEV is never allowed to silently become a validator or objective estimator.
 
-The initial public interfaces are intentionally small:
-
-```python
-generate(state) -> list[CandidateAction]
-rank(state, candidates) -> list[RankedCandidate]
-evaluate_move(state, action) -> Evaluation
-validate(solution) -> ValidationResult
+```text
+generate legal candidates
+        ↓
+rank cheaply
+        ↓
+evaluate selected candidates exactly
+        ↓
+validate
+        ↓
+accept
 ```
 
-The concrete RBP implementation can evolve without changing the selector contract.
+If JEV is removed, the same candidate generator and exact evaluator must still produce the vanilla baseline.
 
-## 4. Research architecture
+## Reference mapping
 
-The first prototype is the lower layer of the broader JEV-Star idea:
-
-```
-LLM
-  |
-  | invent / modify search strategy
-  v
-VLNS
-  |
-  | generate and explore neighborhoods
-  v
-JEV
-  |
-  | choose promising local actions
-  v
-Exact evaluator
-  |
-  v
-Validator
-  |
-  v
-Benchmark / Archive
-  |
-  +--------------------> LLM
-```
-
-The LLM layer is deliberately out of scope for v0.1.
+See reference-vlns.md for the archaeology of the public Bridelance VLNS notebook and the distinction between verified behavior and implementation details that still need recovery.
