@@ -1,76 +1,279 @@
 # JEV-RBP
 
-**JEV-RBP** is a research prototype for combining a compact JEV-like System-1 selector with Very Large Neighborhood Search (VLNS) for the Railroad Blocking Problem (RBP).
+**JEV-RBP** is a research prototype for testing a specific idea inside the
+Railroad Blocking Problem (RBP):
 
-> **VLNS ищет решение. LLM ищет алгоритм, которым VLNS будет искать решение. JEV ищет хорошие локальные действия внутри этого алгоритма.**
+> **VLNS searches for a solution. LLM searches for the algorithm by which
+> VLNS will search for a solution. JEV searches for good local actions inside
+> that algorithm.**
 
-## Status
+JEV-RBP is deliberately the **small experimental lower layer** of the broader
+JEV-Star research program. It is not intended to replace VLNS, the exact
+evaluator, or the validator.
 
-**Phase 3A — RAS public benchmark archaeology complete.**
+## What is being tested?
 
-The repository now contains the research specification, experiment protocol, Python package scaffold, typed core interfaces, seed RBP implementation, and the frozen RAS v2.1 benchmark contract. The next implementation step is to reconcile `problem.py` with the benchmark's solution/validator semantics before implementing full Drop/Add/Swap VLNS.
+The Railroad Blocking Problem asks us to design directional rail blocks,
+route commodities through a block-service network, and choose physical routes
+subject to infrastructure and operating constraints.
+
+The baseline used by this project is a Very Large Neighborhood Search (VLNS):
+a metaheuristic that repeatedly changes the current solution through large
+neighborhood moves such as:
+
+- **Drop** — close an existing block;
+- **Add** — open a candidate block;
+- **Swap** — close one block and open another.
+
+The recovered public reference implementation uses the following control flow:
+
+\`\`\`
+current solution
+      |
+      +--> best Drop ----> apply if improving
+      |
+      +--> best Add  ----> apply if improving
+      |
+      +--> if neither improved:
+             best Swap --> apply if improving
+      |
+      +--> otherwise stop
+\`\`\`
+
+The important detail is that this is **phase ordered**, not one global scan over
+Drop + Add + Swap. A successful Drop is applied before Add candidates are
+evaluated.
+
+JEV is introduced only after this baseline is stable:
+
+\`\`\`
+candidate actions
+      |
+      v
+   JEV rank
+      |
+      v
+    Top-K
+      |
+      v
+exact rerouting + objective
+      |
+      v
+   validator
+      |
+      v
+ accept / reject
+\`\`\`
+
+Therefore JEV is a **selector**, not a source of truth.
+
+## Current implementation status
+
+**Phase 3 — clean-room vanilla VLNS reproduction**
+
+Implemented:
+
+- canonical RBP data model;
+- GMNS/RAS CSV loader;
+- bidirectional physical shortest-path routing;
+- directed block-service graph;
+- commodity rerouting through opened blocks;
+- block-volume aggregation;
+- removal of unused opened blocks after rerouting;
+- typed Drop/Add/Swap actions;
+- reference-shaped Drop → Add → conditional Swap orchestration;
+- deterministic selector baselines;
+- independent seed validator;
+- initial objective components;
+- regression tests for physical and service routing.
+
+Still to implement:
+
+- complete reference-equivalent candidate generation and filters;
+- exact Drop/Add/Swap move evaluator over the real RBP state;
+- full C1–C9b benchmark validator;
+- complete operating objective including handling and interchange;
+- link-capacity-aware physical block routing;
+- benchmark runner and experiment artifacts;
+- trace generation for JEV training.
+
+The project intentionally separates **archaeology** from **implementation**:
+the recovered competition/reference code remains under \`data/reference/archive/\`
+as provenance material; the solver itself is a clean-room implementation of
+the documented behavior.
 
 ## Architecture
 
-```
-                 LLM
-                  │
-          future: invent heuristics
-                  │
-                  ▼
-                 VLNS
-                  │
-          candidate generation
-                  │
-                  ▼
-                 JEV
-                  │
-            local action
-                  │
-                  ▼
-          exact evaluator
-                  │
-                  ▼
-              Validator
-                  │
-                  ▼
-              Benchmark
-```
+\`\`\`
+                     future
+                       LLM
+                        |
+                invent / modify
+                 search heuristics
+                        |
+                        v
+              +-------------------+
+              |       VLNS        |
+              | solution search   |
+              +---------+---------+
+                        |
+                 candidate actions
+                        |
+                        v
+                 +------+------+
+                 |     JEV     |
+                 | local ranker|
+                 +------+------+
+                        |
+                     Top-K
+                        |
+                        v
+              exact evaluator
+              + rerouting
+                        |
+                        v
+                   Validator
+                        |
+                        v
+                    Benchmark
+\`\`\`
 
-JEV is a **selector, not the source of truth**. Candidate legality belongs to the search/problem layer, exact evaluation determines the actual effect, and the validator independently determines feasibility.
+The critical experimental invariant is:
 
-## Local development
+> Removing JEV must leave the candidate generator, exact evaluator, validator
+> and acceptance semantics unchanged.
+
+This makes it possible to attribute any change in search efficiency to the
+selector rather than to a hidden change in the optimization problem.
+
+## Two graphs, not one
+
+A central implementation detail is the separation between the **physical
+network** and the **blocking-service network**.
+
+### Physical network
+
+The physical network contains GMNS track links and is used for shortest-path
+routing of a block.
+
+The recovered reference data loader treats physical links as traversable in
+both directions for shortest-path computation, while retaining the original
+link identifier.
+
+### Blocking-service network
+
+A block is a **directed** service arc:
+
+\`\`\`
+Yard A  ----block---->  Yard B
+\`\`\`
+
+A block A → B and a block B → A are different services and have separate
+fixed costs.
+
+Commodity routing happens on this directed block graph. Each service arc is
+backed by a physical route through the rail network.
+
+This separation is essential:
+
+\`\`\`
+physical graph                 service graph
+
+track links                    opened blocks
+     |                              |
+     v                              v
+Dijkstra shortest path        commodity routing
+     |                              |
+     +----------> block <-----------+
+\`\`\`
+
+See [docs/service-routing.md](docs/service-routing.md).
+
+## Repository map
+
+\`\`\`
+jev-rbp/
+├── README.md
+├── README_RU.md
+├── PRD.md
+├── PLAN.md
+├── data/
+│   └── reference/
+│       └── archive/          # recovered reference implementation
+├── docs/
+│   ├── architecture.md
+│   ├── benchmark-archaeology.md
+│   ├── experiments.md
+│   ├── reference-vlns.md
+│   ├── rbp.md
+│   ├── research.md
+│   ├── service-routing.md
+│   └── solver-archaeology.md
+├── src/jev_rbp/
+│   ├── actions.py
+│   ├── core.py
+│   ├── evaluation.py
+│   ├── greedy.py
+│   ├── io.py
+│   ├── objective.py
+│   ├── problem.py
+│   ├── rerouting.py
+│   ├── routing.py
+│   ├── selectors.py
+│   ├── service.py
+│   ├── validator.py
+│   └── vlns.py
+└── tests/
+\`\`\`
+
+## Development
 
 Requires Python 3.11+.
 
-```bash
+\`\`\`bash
 python -m pip install -e ".[dev]"
 pytest -q
 ruff check .
 jev-rbp
-```
+\`\`\`
 
 ## Research ladder
 
-1. Reproduce vanilla VLNS
-2. Instrument the search
-3. Study candidate generation
-4. Train JEV on search traces
-5. Compare Random / Greedy / JEV
-6. Integrate JEV into VLNS
-7. Use MIP as an oracle on small instances
-8. Test generalization
-9. Let LLM generate new search heuristics
-10. Evolve toward JEV-Star
+1. Reproduce the reference VLNS control flow.
+2. Reproduce candidate generation and exact move evaluation.
+3. Reproduce the benchmark validator and objective.
+4. Instrument the search and collect traces.
+5. Measure candidate-pool quality.
+6. Train a small JEV ranker.
+7. Compare Random / Greedy / Vanilla VLNS / JEV Top-K.
+8. Test generalization.
+9. Use MIP as an exact teacher on small instances.
+10. Let an LLM propose new neighborhoods and search heuristics.
+11. Evolve toward JEV-Star.
 
-See [PRD.md](PRD.md), [PLAN.md](PLAN.md), [docs/architecture.md](docs/architecture.md), [docs/benchmark-archaeology.md](docs/benchmark-archaeology.md), and [docs/experiments.md](docs/experiments.md).
+## Research documents
+
+- [PRD](PRD.md) — research requirements and hypotheses.
+- [PLAN](PLAN.md) — implementation roadmap and current checkpoints.
+- [Architecture](docs/architecture.md) — module and responsibility boundaries.
+- [Service routing](docs/service-routing.md) — physical graph vs directed block graph.
+- [Solver archaeology](docs/solver-archaeology.md) — recovered reference behavior.
+- [Benchmark archaeology](docs/benchmark-archaeology.md) — RAS v2.1 contract.
+- [Experiments](docs/experiments.md) — controlled experiment protocol.
+- [RBP model](docs/rbp.md) — canonical problem definition.
 
 ## References
 
+- [RAS2026-PSC public mirror](https://github.com/asu-trans-ai-lab/RAS2026-PSC)
 - [Nicolas Bridelance — Railroad Blocking VLNS Metaheuristic](https://www.kaggle.com/code/nbridelancetb/railroad-blocking-vlns-metaheuristic)
 - [Nicolas Bridelance — Railroad Blocking MIP Pyomo HiGHS](https://www.kaggle.com/code/nbridelancetb/railroad-blocking-mip-pyomo-highs)
-- [Public validator/diagnostics implementation](https://github.com/AnniceNajafi/rasblocking)
+- [AnniceNajafi/rasblocking](https://github.com/AnniceNajafi/rasblocking)
 
-## License
+## Research status
 
-To be defined.
+This repository is an experimental research codebase. The goal of v0.1 is not
+to prove that JEV is better than VLNS. A negative result is useful if the
+comparison is controlled and reproducible.
+
+The broader JEV-Star architecture is documented separately from this
+RBP-specific implementation.
