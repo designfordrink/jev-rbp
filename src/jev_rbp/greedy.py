@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from .problem import Block, BlockRoute, BlockingSequence, RBPInstance, Solution
+from .problem import Block, BlockRoute, BlockingSequence, RBPInstance, Solution, default_block_type
 from .routing import DijkstraRouter
 
 
 def build_greedy_solution(instance: RBPInstance, router: DijkstraRouter) -> Solution:
     """Create one direct block per demand.
 
-    This is a seed implementation, not claimed equivalent to the Kaggle greedy heuristic.
+    This remains a seed, not a claim of equivalence to the competition greedy.
     """
     solution = Solution()
     for demand_id, demand in instance.demands.items():
         block_id = demand_id
-        volume = demand.volume * instance.settings.demand_multiplier
+        volume = demand.effective_volume(instance.settings)
         solution.blocks[block_id] = Block(
             block_id, demand.origin_yard_id, demand.dest_yard_id,
-            demand.commodity_type, volume
+            default_block_type(demand.commodity_type), volume
         )
         route = router.shortest_path(demand.origin_yard_id, demand.dest_yard_id)
         if route is not None:
