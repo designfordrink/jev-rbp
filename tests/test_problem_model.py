@@ -1,5 +1,9 @@
 from jev_rbp.problem import (
-    BlockType, CommodityType, Demand, Node, RBPInstance, Settings,
+    BlockType,
+    CommodityType,
+    Demand,
+    Node,
+    Settings,
     default_block_type,
 )
 
