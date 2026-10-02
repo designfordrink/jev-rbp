@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .core import ValidationResult
-from .problem import CommodityType, RBPInstance, Solution
+from .problem import DIRECT_ONLY_COMMODITIES, RBPInstance, Solution
 
 
 class RBPValidator:
@@ -17,17 +17,30 @@ class RBPValidator:
             if sequence is None:
                 violations.append(f"demand {demand_id}: missing blocking sequence")
                 continue
-            expected = demand.volume * self.instance.settings.demand_multiplier
+            expected = demand.effective_volume(self.instance.settings)
             if abs(sequence.volume - expected) > 1e-9:
                 violations.append(f"demand {demand_id}: volume mismatch")
-            if demand.commodity_type in {CommodityType.INTERMODAL, CommodityType.AUTOMOBILE}:
-                if len(sequence.block_ids) != 1:
-                    violations.append(f"demand {demand_id}: direct-only commodity has multiple blocks")
+
+            if demand.commodity_type in DIRECT_ONLY_COMMODITIES and len(sequence.block_ids) != 1:
+                violations.append(f"demand {demand_id}: direct-only commodity has multiple blocks")
+
             for block_id in sequence.block_ids:
                 block = solution.blocks.get(block_id)
                 if block is None:
                     violations.append(f"demand {demand_id}: unknown block {block_id}")
                     continue
-                if block.commodity_type != demand.commodity_type:
-                    violations.append(f"demand {demand_id}: commodity mismatch")
+                # Block type is intentionally separate from demand commodity type.
+                # C8/full benchmark validation is responsible for commodity sharing;
+                # this seed validator only checks that the block can carry the
+                # demand's commodity family.
+                expected_types = {
+                    "Merchandise": {"Manifest"},
+                    "Coal": {"Bulk"},
+                    "Grain": {"Bulk"},
+                    "Intermodal": {"Intermodal"},
+                    "Automobile": {"Multilevel"},
+                }
+                if block.block_type.value not in expected_types[demand.commodity_type.value]:
+                    violations.append(f"demand {demand_id}: incompatible block type")
+
         return ValidationResult(not violations, tuple(violations))
