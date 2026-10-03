@@ -43,6 +43,17 @@ It is a useful non-learning baseline because it introduces no ranking signal.
 `RandomSelector(seed=...)` randomly permutes the same candidate pool.
 The seed makes the experiment reproducible.
 
+### Greedy
+
+`GreedySelector` ranks candidates with a cheap, user-supplied score before
+the exact-evaluation budget is spent. Lower scores are evaluated first. The
+score function must not call the exact evaluator; otherwise the selector would
+consume the budget it is supposed to control. Stable sorting preserves the
+candidate-generator order when scores tie.
+
+This generic baseline is the interface for the next RBP-specific experiment:
+a hand-designed, inexpensive score based on candidate/state features.
+
 ### Full scan
 
 `exact_evaluations_per_phase=None` evaluates every candidate. This is the
