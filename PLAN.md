@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-**Phase 8 — JEV v0 implemented on top of the Phase 7 dataset substrate.**
+**Phase 8 — JEV v0 experiment harness implemented.**
 
 PR #9 (Phase 7 dataset generation) is merged with successful CI.
 
