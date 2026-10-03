@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field
-from math import inf, isfinite
+from math import inf
 
 from .problem import DIRECT_ONLY_COMMODITIES, RBPInstance, Solution
 from .routing import DijkstraRouter
