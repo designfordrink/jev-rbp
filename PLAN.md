@@ -127,9 +127,9 @@ Remaining archaeology:
 
 ## Phase 7 — JEV dataset
 
-- [ ] collect vanilla VLNS traces;
-- [ ] define feature schema;
-- [ ] split by instance, not by row;
+- [x] collect vanilla VLNS traces;
+- [x] define feature schema;
+- [x] split by instance, not by row;
 - [ ] freeze dataset version;
 - [ ] record exact deltas and feasibility labels.
 
