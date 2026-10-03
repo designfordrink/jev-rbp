@@ -221,7 +221,7 @@ def choose_best_improvement(
     best: tuple[CandidateAction, Evaluation] | None = None
     for action in candidates:
         evaluation = evaluator.evaluate(state, action)
-        if not evaluation.feasible or evaluation.delta >= 0:
+        if not evaluation.feasible or evaluation.delta >= -1e-6:
             continue
         if best is None or evaluation.delta < best[1].delta:
             best = (action, evaluation)
