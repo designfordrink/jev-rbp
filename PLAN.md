@@ -75,22 +75,22 @@ Remaining archaeology:
 
 ### 3C — Exact move evaluation
 
-- [ ] generate legal Drop candidates;
-- [ ] generate legal Add candidates;
-- [ ] generate legal Swap candidates;
-- [ ] apply candidate virtually;
-- [ ] reroute;
-- [ ] calculate exact objective delta;
-- [ ] check reference move-level feasibility;
-- [ ] reproduce acceptance tolerance;
+- [x] generate legal Drop candidates;
+- [x] generate legal Add candidates;
+- [x] generate legal Swap candidates;
+- [x] apply candidate virtually;
+- [x] reroute;
+- [x] calculate exact objective delta;
+- [x] check reference move-level feasibility;
+- [x] reproduce acceptance tolerance;
 - [ ] reproduce stopping semantics.
 
 ### 3D — Benchmark authority
 
-- [ ] full independent C1–C9b validator;
-- [ ] complete fixed + transport + handling + interchange objective;
+- [x] full independent C1–C9b validator;
+- [x] complete fixed + transport + handling + interchange objective;
 - [ ] link-capacity-aware physical routing;
-- [ ] stress score;
+- [x] stress score;
 - [ ] solution serializer/parser compatibility.
 
 ### 3E — Reproduction
