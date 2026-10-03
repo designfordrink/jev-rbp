@@ -121,7 +121,7 @@ Remaining archaeology:
 
 - [x] Random;
 - [x] Identity;
-- [ ] hand-designed Greedy selector;
+- [x] hand-designed Greedy selector;
 - [ ] exact Oracle selector;
 - [ ] common evaluation-budget harness.
 
