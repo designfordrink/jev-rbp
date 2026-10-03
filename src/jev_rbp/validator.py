@@ -44,3 +44,16 @@ class RBPValidator:
                     violations.append(f"demand {demand_id}: incompatible block type")
 
         return ValidationResult(not violations, tuple(violations))
+
+
+from .benchmark import BenchmarkAuthority, BenchmarkReport
+
+
+class BenchmarkValidator:
+    """Public adapter for the independent RAS benchmark authority."""
+
+    def __init__(self, instance: RBPInstance) -> None:
+        self.authority = BenchmarkAuthority(instance)
+
+    def validate(self, solution: Solution) -> BenchmarkReport:
+        return self.authority.validate(solution)
