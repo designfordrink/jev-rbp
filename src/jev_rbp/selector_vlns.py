@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .core import CandidateAction, Evaluation, Selector, ValidationResult
+from .core import CandidateAction, Evaluation, Selector
 from .trace import PhaseTrace, SearchTrace
 from .vlns import (
     MoveApplier,
