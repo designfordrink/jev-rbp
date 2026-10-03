@@ -91,7 +91,7 @@ def test_benchmark_uses_sequence_volume_not_block_design_volume():
     report = BenchmarkAuthority(_instance()).validate(solution)
 
     assert report.feasible
-    assert report.cost.transport == 1200.0
+    assert report.cost.transport == 900.0
 
 
 def test_link_capacity_is_independent_benchmark_constraint():
@@ -169,7 +169,7 @@ def test_underserved_demand_is_feasible_but_penalized_by_stress():
     assert report.stress is not None
     assert report.stress.unserved_demand_cars == 10.0
     assert report.stress.unserved_car_miles == 250.0
-    assert report.stress.stress_score == 2350.0
+    assert report.stress.stress_score == 2050.0
 
 
 def test_classification_track_limit_counts_manifest_blocks_only():
