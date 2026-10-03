@@ -50,3 +50,20 @@ class GreedySelector:
         self, state: object, candidates: Sequence[CandidateAction]
     ) -> Sequence[CandidateAction]:
         return sorted(candidates, key=lambda candidate: self._score(state, candidate))
+
+
+class OracleSelector:
+    """Exact-evaluation oracle used only as an upper-bound experiment."""
+
+    def __init__(self, evaluator: object) -> None:
+        self._evaluator = evaluator
+
+    def rank(
+        self, state: object, candidates: Sequence[CandidateAction]
+    ) -> Sequence[CandidateAction]:
+        scored = [
+            (self._evaluator.evaluate(state, action).delta, index, action)
+            for index, action in enumerate(candidates)
+        ]
+        scored.sort(key=lambda item: (item[0], item[1]))
+        return [item[2] for item in scored]
