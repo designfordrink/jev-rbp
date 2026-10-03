@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .benchmark import BenchmarkAuthority, BenchmarkReport
 from .core import ValidationResult
 from .problem import DIRECT_ONLY_COMMODITIES, RBPInstance, Solution
 
@@ -44,3 +45,13 @@ class RBPValidator:
                     violations.append(f"demand {demand_id}: incompatible block type")
 
         return ValidationResult(not violations, tuple(violations))
+
+
+class BenchmarkValidator:
+    """Public adapter for the independent RAS benchmark authority."""
+
+    def __init__(self, instance: RBPInstance) -> None:
+        self.authority = BenchmarkAuthority(instance)
+
+    def validate(self, solution: Solution) -> BenchmarkReport:
+        return self.authority.validate(solution)
