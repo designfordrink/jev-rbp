@@ -2,21 +2,19 @@
 
 ## Current checkpoint
 
-**Phase 6 — selector-controlled evaluation baseline implemented.**
+**Phase 8 — JEV v0 implemented on top of the Phase 7 dataset substrate.**
 
-PR #1, which corrected physical-network routing semantics, has been merged.
-The next clean-room layer is now implemented:
+PR #9 (Phase 7 dataset generation) is merged with successful CI.
 
-- directed block-service graph;
-- commodity routing over opened blocks;
-- physical-route caching;
-- all-demand rerouting;
-- block-volume aggregation;
-- unused-block pruning;
-- reference-shaped Drop → Add → conditional Swap orchestration;
-- regression tests for the above.
+Phase 8 now contains:
+- [x] deterministic linear delta scorer;
+- [x] ridge regularization without a heavyweight ML dependency;
+- [x] learned selector interface with no exact-evaluator access;
+- [x] initial unit tests;
+- [x] JEV v0 protocol documentation.
 
-The repository still does **not** claim full benchmark equivalence. The selector baseline is an experiment harness, not a claim of full solver reproduction.
+The first experimental comparison still requires a multi-instance dataset and
+a grouped evaluation harness.
 
 ## Phase 0 — Repository foundation
 
@@ -131,11 +129,11 @@ Remaining archaeology:
 - [x] define feature schema;
 - [x] split by instance, not by row;
 - [ ] freeze dataset version;
-- [ ] record exact deltas and feasibility labels.
+- [x] record exact deltas and feasibility labels.
 
 ## Phase 8 — JEV v0
 
-- [ ] linear scorer;
+- [x] linear scorer;
 - [ ] shallow MLP;
 - [ ] pairwise ranker;
 - [ ] Top-K hit rate;
