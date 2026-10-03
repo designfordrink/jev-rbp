@@ -43,7 +43,11 @@ def _arrow_ids(values: tuple[int, ...]) -> str:
 
 def _integer(value: float, field_name: str) -> int:
     if not float(value).is_integer():
-        raise ValueError(f"{field_name}={value!r} is not representable by the benchmark integer schema")
+        message = (
+            f"{field_name}={value!r} is not representable by the "
+            "benchmark integer schema"
+        )
+        raise ValueError(message)
     return int(value)
 
 
