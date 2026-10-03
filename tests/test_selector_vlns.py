@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from jev_rbp.actions import AddAction, DropAction, SwapAction
 from jev_rbp.core import Evaluation, ValidationResult
+from jev_rbp.problem import CommodityType
 from jev_rbp.selectors import IdentitySelector
 from jev_rbp.selector_vlns import SelectorVLNSConfig, SelectorVLNSSolver
 
@@ -16,8 +17,8 @@ class Generator:
         if phase == "drop":
             return [DropAction(1), DropAction(2), DropAction(3)]
         if phase == "add":
-            return [AddAction(1, 2, "Manifest")]
-        return [SwapAction(1, 2, 3, "Manifest")]
+            return [AddAction(1, 2, CommodityType.MERCHANDISE)]
+        return [SwapAction(1, 2, 3, CommodityType.MERCHANDISE)]
 
 
 class Evaluator:
@@ -75,14 +76,14 @@ def test_full_phase_budget_recovers_best_improvement():
     assert trace.phases[0].best_delta == -5.0
 
 
-def test_zero_budget_means_evaluate_all_candidates():
+def test_none_budget_means_evaluate_all_candidates():
     solver = SelectorVLNSSolver(
         Generator(),
         IdentitySelector(),
         Evaluator(),
         Applier(),
         Validator(),
-        SelectorVLNSConfig(max_iterations=1, exact_evaluations_per_phase=0),
+        SelectorVLNSConfig(max_iterations=1, exact_evaluations_per_phase=None),
     )
 
     _, trace = solver.solve_with_trace(State(10.0))
