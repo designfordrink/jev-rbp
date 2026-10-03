@@ -91,7 +91,7 @@ class SelectorVLNSSolver:
 
             swap_accepted = False
             if not drop_accepted and not add_accepted:
-                state, swap, swap_trace, swap_accepted = self._run_phase(
+                state, _, swap_trace, swap_accepted = self._run_phase(
                     state, iteration, "swap"
                 )
                 phases.append(swap_trace)
@@ -141,7 +141,7 @@ class SelectorVLNSSolver:
         candidates = list(self.generator.generate_phase(state, phase))
         ranked = list(self.selector.rank(state, candidates))
         budget = self.config.exact_evaluations_per_phase
-        if budget < 0:
+        if budget is not None and budget < 0:
             raise ValueError("exact_evaluations_per_phase must be non-negative")
         selected = ranked if budget is None else ranked[:budget]
         best = choose_best_improvement(self.evaluator, state, selected)
