@@ -1,4 +1,4 @@
-from jev_rbp.actions import AddAction, DropAction
+from jev_rbp.actions import DropAction
 from jev_rbp.core import CandidateAction
 from jev_rbp.dataset import DatasetRow
 from jev_rbp.jev import LinearJEVSelector, fit_linear_jev
