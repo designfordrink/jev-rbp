@@ -2,7 +2,6 @@ from jev_rbp.problem import (
     Block,
     BlockType,
     CommodityType,
-    Demand,
     Link,
     Node,
     RBPInstance,
