@@ -55,3 +55,17 @@ def test_vlns_stops_when_no_improvement():
     state, result = solver.step(State(10.0), 0)
     assert not result.accepted
     assert state.value == 10.0
+
+
+def test_vlns_rejects_improvement_within_reference_tolerance():
+    class TinyImprovement(Evaluator):
+        def evaluate(self, state, action):
+            return Evaluation(state.value, state.value - 5e-7, True)
+
+    solver = VLNSSolver(
+        Generator(), TinyImprovement(), Applier(), Validator()
+    )
+    state, result = solver.step(State(10.0), 0)
+
+    assert not result.accepted
+    assert state.value == 10.0
