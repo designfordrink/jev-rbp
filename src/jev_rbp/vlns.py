@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .core import CandidateAction, Evaluation, ValidationResult
+from .trace import PhaseTrace, SearchTrace
 
 
 class SearchState(Protocol):
@@ -188,6 +189,37 @@ class ReferenceVLNSSolver:
                 break
         return state, tuple(results)
 
+    def solve_with_trace(
+        self, state: SearchState
+    ) -> tuple[SearchState, SearchTrace]:
+        """Run reference VLNS and retain a stable phase-level experiment trace."""
+        phases: list[PhaseTrace] = []
+        for iteration in range(self.config.max_iterations):
+            drop_count, drop = self._best_phase(state, "drop")
+            drop_accepted = drop is not None
+            phases.append(_phase_trace(iteration, "drop", drop_count, drop))
+            if drop is not None:
+                state = self._apply_checked(state, drop)
+
+            add_count, add = self._best_phase(state, "add")
+            add_accepted = add is not None
+            phases.append(_phase_trace(iteration, "add", add_count, add))
+            if add is not None:
+                state = self._apply_checked(state, add)
+
+            swap = None
+            swap_count = 0
+            if not drop_accepted and not add_accepted:
+                swap_count, swap = self._best_phase(state, "swap")
+                phases.append(_phase_trace(iteration, "swap", swap_count, swap))
+                if swap is not None:
+                    state = self._apply_checked(state, swap)
+
+            if not (drop_accepted or add_accepted or swap is not None):
+                break
+        return state, SearchTrace(tuple(phases))
+
+
     def _best_phase(
         self, state: SearchState, phase: str
     ) -> tuple[int, tuple[CandidateAction, Evaluation] | None]:
@@ -226,3 +258,20 @@ def choose_best_improvement(
         if best is None or evaluation.delta < best[1].delta:
             best = (action, evaluation)
     return best
+
+
+
+def _phase_trace(
+    iteration: int,
+    phase: str,
+    candidates: int,
+    best: tuple[CandidateAction, Evaluation] | None,
+) -> PhaseTrace:
+    return PhaseTrace(
+        iteration=iteration,
+        phase=phase,
+        candidates=candidates,
+        evaluated=candidates,
+        accepted=best is not None,
+        best_delta=None if best is None else best[1].delta,
+    )
