@@ -33,7 +33,7 @@ def _instance(capacity=1000.0, handling_capacity=1000.0):
         links={
             1: Link(1, 1, 2, 10.0, capacity),
             2: Link(2, 2, 3, 15.0, capacity),
-            3: Link(3, 1, 3, 40.0, capacity),
+            3: Link(3, 1, 3, 30.0, capacity),
         },
         demands={
             1: Demand(1, 1, 3, 20, CommodityType.MERCHANDISE),
@@ -76,12 +76,12 @@ def test_valid_solution_passes_all_benchmark_checks():
     assert report.violations == []
     assert report.cost is not None
     assert report.cost.fixed == 200.0
-    assert report.cost.transport == 1200.0
+    assert report.cost.transport == 900.0
     assert report.cost.handling == 0.0
-    assert report.cost.total == 1400.0
+    assert report.cost.total == 1100.0
     assert report.stress is not None
     assert report.stress.unserved_demand_cars == 0.0
-    assert report.stress.stress_score == 1400.0
+    assert report.stress.stress_score == 1100.0
 
 
 def test_benchmark_uses_sequence_volume_not_block_design_volume():
@@ -168,8 +168,8 @@ def test_underserved_demand_is_feasible_but_penalized_by_stress():
     assert report.feasible
     assert report.stress is not None
     assert report.stress.unserved_demand_cars == 10.0
-    assert report.stress.unserved_car_miles == 400.0
-    assert report.stress.stress_score == 3000.0
+    assert report.stress.unserved_car_miles == 250.0
+    assert report.stress.stress_score == 2350.0
 
 
 def test_classification_track_limit_counts_manifest_blocks_only():
