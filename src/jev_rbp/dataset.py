@@ -29,6 +29,7 @@ class DatasetRow:
     objective_after: float
     delta: float
     is_improving: bool
+    instance_id: str = "default"
 
 
 FeatureExtractor = Callable[[Solution, CandidateAction, str, int], dict[str, float]]
@@ -42,6 +43,7 @@ def collect_jev_dataset(
     instance: RBPInstance,
     router: DijkstraRouter,
     *,
+    instance_id: str = "default",
     max_iterations: int = 200,
     feature_extractor: FeatureExtractor | None = None,
 ) -> tuple[DatasetRow, ...]:
@@ -62,19 +64,19 @@ def collect_jev_dataset(
 
     for iteration in range(max_iterations):
         state, phase_rows, accepted_drop = _collect_phase(
-            state, iteration, "drop", generator, evaluator, applier, extract
+            state, iteration, "drop", generator, evaluator, applier, extract, instance_id
         )
         rows.extend(phase_rows)
 
         state, phase_rows, accepted_add = _collect_phase(
-            state, iteration, "add", generator, evaluator, applier, extract
+            state, iteration, "add", generator, evaluator, applier, extract, instance_id
         )
         rows.extend(phase_rows)
 
         accepted_swap = False
         if not accepted_drop and not accepted_add:
             state, phase_rows, accepted_swap = _collect_phase(
-                state, iteration, "swap", generator, evaluator, applier, extract
+                state, iteration, "swap", generator, evaluator, applier, extract, instance_id
             )
             rows.extend(phase_rows)
 
@@ -102,6 +104,7 @@ def _collect_phase(
     evaluator: MoveEvaluator,
     applier: MoveApplier,
     feature_extractor: FeatureExtractor,
+    instance_id: str,
 ) -> tuple[Solution, list[DatasetRow], bool]:
     candidates = list(generator.generate_phase(state, phase))
     observations: list[tuple[CandidateAction, Evaluation]] = []
@@ -112,6 +115,7 @@ def _collect_phase(
         observations.append((action, evaluation))
         rows.append(
             DatasetRow(
+                instance_id=instance_id,
                 iteration=iteration,
                 phase=phase,
                 candidate_index=candidate_index,
