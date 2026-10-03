@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-**Phase 3B — service graph and rerouting boundary implemented.**
+**Phase 6 — selector-controlled evaluation baseline implemented.**
 
 PR #1, which corrected physical-network routing semantics, has been merged.
 The next clean-room layer is now implemented:
@@ -16,7 +16,7 @@ The next clean-room layer is now implemented:
 - reference-shaped Drop → Add → conditional Swap orchestration;
 - regression tests for the above.
 
-The repository still does **not** claim full benchmark equivalence.
+The repository still does **not** claim full benchmark equivalence. The selector baseline is an experiment harness, not a claim of full solver reproduction.
 
 ## Phase 0 — Repository foundation
 
