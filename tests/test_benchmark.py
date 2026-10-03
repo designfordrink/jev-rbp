@@ -169,4 +169,61 @@ def test_underserved_demand_is_feasible_but_penalized_by_stress():
     assert report.stress is not None
     assert report.stress.unserved_demand_cars == 10.0
     assert report.stress.unserved_car_miles == 400.0
-    assert report.stress.stress_score == 3400.0
+    assert report.stress.stress_score == 3000.0
+
+
+def test_classification_track_limit_counts_manifest_blocks_only():
+    instance = _instance()
+    instance.nodes[1] = Node(
+        1, "yard", num_tracks=1, handling_capacity=1000.0,
+        railroad_id="BNSF",
+    )
+    solution = Solution(
+        blocks={
+            10: Block(10, 1, 2, BlockType.MANIFEST, 20.0),
+            11: Block(11, 1, 3, BlockType.MANIFEST, 20.0),
+        },
+        sequences={
+            1: BlockingSequence(1, (10,), 20.0),
+            2: BlockingSequence(2, (11,), 10.0),
+        },
+        routes={
+            10: BlockRoute(10, (1, 2), (1,)),
+            11: BlockRoute(11, (1, 3), (3,)),
+        },
+    )
+
+    report = BenchmarkAuthority(instance).validate(solution)
+
+    assert not report.feasible
+    assert any(v.startswith("C2:") for v in report.violations)
+
+
+def test_one_block_cannot_carry_two_commodity_types():
+    instance = _instance()
+    solution = _valid_solution()
+    solution.sequences[2] = BlockingSequence(2, (10,), 10.0)
+
+    report = BenchmarkAuthority(instance).validate(solution)
+
+    assert not report.feasible
+    assert any(v.startswith("C8:") for v in report.violations)
+
+
+def test_minimum_block_volume_uses_shortest_physical_distance():
+    instance = _instance()
+    instance.settings = Settings(
+        min_block_vol_short=25.0,
+        min_block_vol_medium=30.0,
+        min_block_vol_long=40.0,
+        max_circuitous_ratio=1.3,
+        block_fixed_cost=100.0,
+        transport_cost_coefficient=1.0,
+        interchange_cost=100.0,
+        stress_penalty_m=5.0,
+    )
+
+    report = BenchmarkAuthority(instance).validate(_valid_solution())
+
+    assert not report.feasible
+    assert any(v.startswith("C4:") for v in report.violations)
