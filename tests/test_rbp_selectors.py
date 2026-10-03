@@ -1,7 +1,14 @@
 from dataclasses import dataclass
 
 from jev_rbp.actions import AddAction, DropAction
-from jev_rbp.problem import Block, BlockType, RBPInstance, Settings, Solution
+from jev_rbp.problem import (
+    Block,
+    BlockType,
+    CommodityType,
+    RBPInstance,
+    Settings,
+    Solution,
+)
 from jev_rbp.rbp_selectors import RBPGreedySelector
 
 
@@ -46,8 +53,8 @@ def test_rbp_greedy_prefers_cheaper_add_candidate():
     ranked = selector.rank(
         state,
         [
-            AddAction(1, 3, "Merchandise"),
-            AddAction(1, 2, "Merchandise"),
+            AddAction(1, 3, CommodityType.MERCHANDISE),
+            AddAction(1, 2, CommodityType.MERCHANDISE),
         ],
     )
 
