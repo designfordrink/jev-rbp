@@ -1,43 +1,56 @@
 # RBP Canonical Model
 
-This document freezes the problem model used by JEV-RBP v0.1. It follows the released RAS 2026 v2.1 benchmark package and validator.
+This document freezes the clean-room problem model used by JEV-RBP.
 
 ## 1. Input model
 
-The benchmark uses GMNS-style CSV inputs:
+The RAS benchmark uses GMNS-style CSV files:
 
-- node.csv — physical nodes and yards
-- link.csv — physical track segments
-- demand.csv — yard-to-yard commodity demands
-- setting.csv — global parameters
+- \`node.csv\` — physical nodes and yards;
+- \`link.csv\` — physical track segments;
+- \`demand.csv\` — yard-to-yard commodity demands;
+- \`setting.csv\` — global parameters.
 
-The solver must record the exact dataset version and scenario multiplier in every run.
+The five commodity types are:
 
-### Node
+- Merchandise;
+- Intermodal;
+- Coal;
+- Grain;
+- Automobile.
 
-Important fields: node_id, node_type, name, yard_type, yard_level, railroad_id, num_tracks, handling_capacity, handling_cost, is_interchange.
+Intermodal and Automobile are direct-only in the benchmark specification.
 
-Only node_type=yard nodes are demand endpoints and classification points.
+## 2. Two notions of direction
 
-### Link
+There are two different meanings of direction.
 
-Important fields: link_id, from_node_id, to_node_id, length, capacity, railroad_id.
+### Physical links
 
-Links are directed. A bidirectional physical connection is represented by two directed rows.
+The CSV link record contains \`from_node_id\` and \`to_node_id\`. For the
+reference shortest-path computation, the recovered loader constructs an
+undirected physical graph, so a physical link can be traversed in either
+direction while retaining its original link ID.
 
-### Demand
+### Blocks
 
-A demand contains commodity_id, commodity_type/block_type, origin_yard_id, dest_yard_id and volume.
+A block is a directional service:
 
-The five benchmark commodity types are Merchandise, Intermodal, Coal, Grain and Automobile.
+\`\`\`
+A -> B
+\`\`\`
 
-Intermodal and Automobile are direct-only: their blocking sequence must contain one direct block.
+A → B and B → A are separate blocks and therefore separate fixed-cost
+decisions.
 
-## 2. Solution state
+The service graph is directed even though the physical shortest-path graph is
+treated as bidirectional.
 
-A blocking solution contains three coupled components:
+## 3. Solution state
 
-~~~text
+A complete blocking solution contains:
+
+\`\`\`
 Block Design
     block_id
     from_yard
@@ -51,35 +64,48 @@ Blocking Sequence
 
 Block Route
     block
-    physical path through network
-~~~
+    physical path through the network
+\`\`\`
 
-## 3. Objective
+## 4. Objective
 
-The operating objective consists of fixed block cost + transportation cost + handling cost + interchange cost.
+The benchmark operating cost consists of:
 
-The released validator also computes a Stress Score by adding a penalty for unserved car-miles.
+1. block fixed cost;
+2. transportation cost;
+3. classification handling cost;
+4. interchange cost.
 
-For JEV experiments, objective_after - objective_before is the authoritative move delta. A selector must never estimate this as truth.
+For a JEV experiment, the authoritative move delta is:
 
-## 4. Current validation contract
+\`\`\`
+exact objective(after action) - objective(before action)
+\`\`\`
 
-The released v2.0 validator implements:
+A selector must never replace this calculation with a learned estimate.
 
-1. Flow conservation.
-2. Classification track limit.
-3. Yard handling capacity.
-4. Minimum block volume.
-5. Link capacity.
-6. Maximum circuitous ratio.
-7. Single-path uniqueness.
-8. Single commodity type per block.
-9. Direct-block rule for Intermodal and Automobile.
-9b. Demand-volume consistency.
+Stress scenarios additionally use the benchmark Stress Score with an
+unserved-demand penalty.
 
-The v2.0 validator also rejects subtours/repeated yards in a blocking sequence and applies a defined interchange-cost rule.
+## 5. Constraints
 
-## 5. Parameters
+The benchmark contract covers:
+
+- C1 — flow conservation / valid blocking sequences;
+- C2 — classification track limit;
+- C3 — yard handling capacity;
+- C4 — minimum block volume;
+- C5 — physical link throughput capacity;
+- C6 — maximum circuitous ratio;
+- C7 — single-path uniqueness;
+- C8 — one commodity type per block;
+- C9b — demand-volume consistency in the released validator.
+
+The exact authoritative definitions are recorded in
+[benchmark-archaeology.md](benchmark-archaeology.md). The current clean-room
+validator is intentionally not yet a full implementation of all constraints.
+
+## 6. Default parameters
 
 | Parameter | Default |
 |---|---:|
@@ -94,45 +120,47 @@ The v2.0 validator also rejects subtours/repeated yards in a blocking sequence a
 | stress penalty M | 5 |
 | demand multiplier | 1.0 |
 
-The demand multiplier is part of the scenario definition and must be recorded explicitly.
+## 7. Rerouting boundary
 
-## 6. Shortest paths
+Given an open block design:
 
-Shortest-path distance is used by minimum-block-volume checks, circuitous-ratio checks and stress-score unserved car-mile calculation.
+\`\`\`
+open blocks
+    |
+    v
+directed service graph
+    |
+    v
+commodity routing
+    |
+    +--> block sequences
+    |
+    +--> block volumes
+    |
+    v
+physical route for each used block
+\`\`\`
 
-The released validator prefers the supplied OD distance matrix and falls back to sparse Dijkstra on the physical network for missing pairs. JEV-RBP should expose this as one shared shortest-path service.
+The service router uses the physical shortest route of each block as its
+transport component and adds intermediate-yard handling cost.
 
-## 7. Implication for JEV
+## 8. JEV boundary
 
-~~~text
-RBP instance
-    ↓
-current SolutionState
-    ↓
-legal CandidateAction
-    ↓
-JEV ranking
-    ↓
-exact move evaluation
-    ↓
-validator
-    ↓
-accept/reject
-    ↓
-new SolutionState
-~~~
+\`\`\`
+candidate actions
+       |
+       v
+      JEV
+       |
+       v
+    Top-K
+       |
+       v
+ exact rerouting
+       |
+       v
+ objective + validator
+\`\`\`
 
-This defines the experimental boundary:
-
-- candidate generator: what may be tried
-- JEV: what should be tried first
-- exact evaluator: what actually happens
-- validator: whether the resulting solution is legal
-
-No learned component replaces the last two in v0.1.
-
-## Sources
-
-- https://github.com/asu-trans-ai-lab/RAS2026-PSC
-- https://github.com/asu-trans-ai-lab/RAS2026-PSC/blob/main/datasets/DATASET_README.md
-- https://github.com/asu-trans-ai-lab/RAS2026-PSC/blob/main/scoring/fast_validator_v2_0.py
+The experiment is meaningful only if the last two stages remain independent of
+JEV.
