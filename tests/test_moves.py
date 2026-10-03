@@ -10,6 +10,7 @@ from jev_rbp.problem import (
     Block,
     BlockType,
     BlockingSequence,
+    BlockRoute,
     CommodityType,
     Demand,
     Link,
@@ -56,8 +57,8 @@ def _via_state():
             1: BlockingSequence(1, (10, 11), 20.0),
         },
         routes={
-            10: (10, 1, (1,)),
-            11: (11, 2, (2,)),
+            10: BlockRoute(10, (1, 2), (1,)),
+            11: BlockRoute(11, (2, 3), (2,)),
         },
     )
 
