@@ -43,6 +43,22 @@ It is a useful non-learning baseline because it introduces no ranking signal.
 `RandomSelector(seed=...)` randomly permutes the same candidate pool.
 The seed makes the experiment reproducible.
 
+### Greedy
+
+`GreedySelector` ranks candidates with a cheap, user-supplied score before
+the exact-evaluation budget is spent. Lower scores are evaluated first. The
+score function must not call the exact evaluator; otherwise the selector would
+consume the budget it is supposed to control. Stable sorting preserves the
+candidate-generator order when scores tie.
+
+The repository also contains `RBPGreedySelector`, a hand-designed RBP
+heuristic. It estimates block cost as fixed cost plus volume × physical
+distance × transport coefficient. Drop candidates are ranked by the negative
+estimated cost avoided; Add candidates by their estimated cost; Swap candidates
+combine the two estimates. It is intentionally only a proxy: rerouting effects,
+handling, interchange, and feasibility remain the responsibility of the exact
+evaluator and validator.
+
 ### Full scan
 
 `exact_evaluations_per_phase=None` evaluates every candidate. This is the

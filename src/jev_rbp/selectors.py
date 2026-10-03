@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import Sequence
+from collections.abc import Callable, Sequence
 
 from .core import CandidateAction
 
@@ -29,3 +29,24 @@ class IdentitySelector:
         self, state: object, candidates: Sequence[CandidateAction]
     ) -> Sequence[CandidateAction]:
         return list(candidates)
+
+
+class GreedySelector:
+    """Rank candidates by a cheap, user-supplied heuristic score.
+
+    Lower scores are ranked first. The score function is deliberately separate
+    from the exact evaluator: a greedy selector may use inexpensive state and
+    candidate features, but it must not consume the exact-evaluation budget.
+    Python's stable sort preserves candidate-generator order for equal scores.
+    """
+
+    def __init__(
+        self,
+        score: Callable[[object, CandidateAction], float],
+    ) -> None:
+        self._score = score
+
+    def rank(
+        self, state: object, candidates: Sequence[CandidateAction]
+    ) -> Sequence[CandidateAction]:
+        return sorted(candidates, key=lambda candidate: self._score(state, candidate))
