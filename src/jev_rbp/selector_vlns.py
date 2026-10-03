@@ -12,7 +12,6 @@ from .vlns import (
     PhaseMoveGenerator,
     SearchState,
     StateValidator,
-    VLNSConfig,
     choose_best_improvement,
 )
 
@@ -22,7 +21,7 @@ class SelectorVLNSConfig:
     """Configuration for a selector-controlled VLNS experiment."""
 
     max_iterations: int = 200
-    exact_evaluations_per_phase: int = 1
+    exact_evaluations_per_phase: int | None = 1
     time_limit_seconds: float | None = 300.0
 
 
@@ -80,12 +79,12 @@ class SelectorVLNSSolver:
     ) -> tuple[SearchState, SearchTrace]:
         phases: list[PhaseTrace] = []
         for iteration in range(self.config.max_iterations):
-            state, drop, drop_trace, drop_accepted = self._run_phase(
+            state, _, drop_trace, drop_accepted = self._run_phase(
                 state, iteration, "drop"
             )
             phases.append(drop_trace)
 
-            state, add, add_trace, add_accepted = self._run_phase(
+            state, _, add_trace, add_accepted = self._run_phase(
                 state, iteration, "add"
             )
             phases.append(add_trace)
@@ -144,7 +143,7 @@ class SelectorVLNSSolver:
         budget = self.config.exact_evaluations_per_phase
         if budget < 0:
             raise ValueError("exact_evaluations_per_phase must be non-negative")
-        selected = ranked if budget == 0 else ranked[:budget]
+        selected = ranked if budget is None else ranked[:budget]
         best = choose_best_improvement(self.evaluator, state, selected)
         accepted = best is not None
         if best is not None:
