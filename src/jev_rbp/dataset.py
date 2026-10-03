@@ -18,9 +18,8 @@ from .vlns import MoveApplier, MoveEvaluator, PhaseMoveGenerator, SearchState
 class DatasetRow:
     """One candidate/action observation for JEV training."""
 
-    instance_id: str = "default"
-    iteration: int = 0
-    phase: str = ""
+    iteration: int
+    phase: str
     candidate_index: int
     action_type: str
     action_payload: tuple[object, ...]
@@ -30,6 +29,7 @@ class DatasetRow:
     objective_after: float
     delta: float
     is_improving: bool
+    instance_id: str = "default"
 
 
 FeatureExtractor = Callable[[Solution, CandidateAction, str, int], dict[str, float]]
