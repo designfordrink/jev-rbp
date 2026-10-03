@@ -51,8 +51,13 @@ score function must not call the exact evaluator; otherwise the selector would
 consume the budget it is supposed to control. Stable sorting preserves the
 candidate-generator order when scores tie.
 
-This generic baseline is the interface for the next RBP-specific experiment:
-a hand-designed, inexpensive score based on candidate/state features.
+The repository also contains `RBPGreedySelector`, a hand-designed RBP
+heuristic. It estimates block cost as fixed cost plus volume × physical
+distance × transport coefficient. Drop candidates are ranked by the negative
+estimated cost avoided; Add candidates by their estimated cost; Swap candidates
+combine the two estimates. It is intentionally only a proxy: rerouting effects,
+handling, interchange, and feasibility remain the responsibility of the exact
+evaluator and validator.
 
 ### Full scan
 
