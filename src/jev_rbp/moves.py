@@ -72,7 +72,7 @@ class RBPMoveGenerator:
                     continue
                 for commodity_type in commodity_types:
                     candidates.append(
-                        (from_yard, to_yard, default_block_type(commodity_type))
+                        (from_yard, to_yard, commodity_type)
                     )
         return tuple(candidates)
 
@@ -84,7 +84,12 @@ class RBPMoveGenerator:
         return tuple(
             candidate
             for candidate in self._candidates
-            if candidate not in open_keys
+            if (
+                candidate[0],
+                candidate[1],
+                default_block_type(candidate[2]),
+            )
+            not in open_keys
         )
 
 
