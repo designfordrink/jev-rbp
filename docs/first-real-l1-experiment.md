@@ -40,3 +40,41 @@ Do not mix results from such slices with official L1/L2/L3 benchmark scores.
 7. Record objective, Stress Score, feasibility and exact-evaluation count.
 
 A real generalization claim requires independent instances. Demand slices from the same L1 instance are useful for debugging and ranking experiments, but they must not be described as independent train/test instances.
+
+
+## Run the first controlled experiment
+
+After preparing the public inputs:
+
+    python scripts/download_ras_l1.py
+
+run:
+
+    python scripts/run_l1_experiment.py
+
+The default run uses 12 deterministic demand rows, splits them into train/test
+slices, collects one reference iteration of exact JEV labels on the train slice,
+then evaluates Identity, Random, RBP Greedy and Linear JEV on the test slice at
+K=1, K=5 and K=10 exact evaluations per phase.
+
+The runner writes:
+
+- `train.jsonl` — exact offline training labels;
+- `model.json` — fitted Linear JEV model;
+- `config.json` — selected demand IDs and experiment settings;
+- `results.csv` and `results.json` — selector results.
+
+The output directory is `artifacts/l1-first-experiment/` by default.
+
+### Important interpretation rule
+
+The train/test split is over demand rows while the physical L1 network is
+shared. Therefore this experiment tests the integration of JEV with real RBP
+data and gives a first ranking signal, but it is **not** an independent-instance
+generalization experiment and must not be reported as an official RAS score.
+
+The public RAS v2.1 release describes the archived L1 input as 47,193 nodes,
+106,570 links and 2,044 demand rows. The upstream repository also explicitly
+distinguishes those archived-file statistics from the published competition
+design table. See the upstream release and README before comparing results with
+official benchmark cases.
