@@ -190,10 +190,19 @@ def main() -> None:
     train_case, train_router = build_case(train_instance, "l1-demand-train")
     test_case, test_router = build_case(test_instance, "l1-demand-test")
 
+    train_yards = {
+        y
+        for demand in train_instance.demands.values()
+        for y in (demand.origin_yard_id, demand.dest_yard_id)
+    }
+    test_yards = {
+        y
+        for demand in test_instance.demands.values()
+        for y in (demand.origin_yard_id, demand.dest_yard_id)
+    }
     print(
         f"L1 slice: {len(train_ids)} train demands / {len(test_ids)} test demands; "
-        f"train yards={len({y for d in train_instance.demands.values() for y in (d.origin_yard_id, d.dest_yard_id)})}, "
-        f"test yards={len({y for d in test_instance.demands.values() for y in (d.origin_yard_id, d.dest_yard_id)})}"
+        f"train yards={len(train_yards)}, test yards={len(test_yards)}"
     )
 
     train_rows = collect_jev_dataset(
