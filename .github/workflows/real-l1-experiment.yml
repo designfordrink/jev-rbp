@@ -1,9 +1,6 @@
 name: Real L1 Experiment
 
 on:
-  push:
-    branches:
-      - phase-10-run-real-l1-experiment
   workflow_dispatch:
 
 jobs:
