@@ -100,3 +100,19 @@ def test_candidate_generator_is_deterministic_and_phase_specific():
     assert [action.block_id for action in drop] == [10, 11]
     assert len(add) == 4
     assert len(swap) == 8
+
+
+
+def test_candidate_yard_filter_is_optional():
+    nodes = {
+        1: Node(1, "yard"),
+        2: Node(2, "yard"),
+        3: Node(3, "yard"),
+    }
+    instance = RBPInstance(nodes=nodes, links={}, demands={}, settings=Settings())
+    generator = RBPMoveGenerator(
+        MoveContext(instance, EmptyRouter()),
+        candidate_yards={1, 2},
+    )
+
+    assert generator._build_candidates() == ()
