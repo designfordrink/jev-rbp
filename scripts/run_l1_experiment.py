@@ -42,7 +42,7 @@ from jev_rbp.problem import (
 )
 
 
-def choose_demand_ids(instance, count: int) -> list[int]:
+def choose_demand_ids(instance, count: int, *, redundant_blocks: int = 1) -> list[int]:
     """Choose deterministic demands with individually feasible direct blocks.
 
     The first prototype needs a benchmark-feasible seed. We therefore keep
@@ -52,6 +52,8 @@ def choose_demand_ids(instance, count: int) -> list[int]:
 
     if count <= 0:
         raise ValueError("count must be positive")
+    if redundant_blocks < 1:
+        raise ValueError("redundant_blocks must be positive")
 
     router = DijkstraRouter(instance)
     selected: list[int] = []
@@ -60,6 +62,8 @@ def choose_demand_ids(instance, count: int) -> list[int]:
     for demand_id in sorted(instance.demands):
         demand = instance.demands[demand_id]
         if demand.origin_yard_id in used_origins:
+            continue
+        if redundant_blocks > 1 and instance.nodes[demand.origin_yard_id].num_tracks < redundant_blocks:
             continue
 
         route = router.shortest_path(demand.origin_yard_id, demand.dest_yard_id)
@@ -105,12 +109,17 @@ def make_slice(base, demand_ids: list[int]):
     )
 
 
-def build_direct_seed(instance, router: DijkstraRouter) -> Solution:
+def build_direct_seed(
+    instance, router: DijkstraRouter, *, redundant_blocks: int = 1
+) -> Solution:
     """Build one direct block per selected demand.
 
     This is intentionally a simple experimental seed, not the official
     competition greedy solver.
     """
+
+    if redundant_blocks < 1:
+        raise ValueError("redundant_blocks must be positive")
 
     solution = Solution()
     for demand_id in sorted(instance.demands):
@@ -122,29 +131,35 @@ def build_direct_seed(instance, router: DijkstraRouter) -> Solution:
                 f"{demand.origin_yard_id}->{demand.dest_yard_id}"
             )
 
-        block = Block(
-            block_id=demand_id,
-            from_yard_id=demand.origin_yard_id,
-            to_yard_id=demand.dest_yard_id,
-            block_type=default_block_type(demand.commodity_type),
-            volume=demand.effective_volume(instance.settings),
-        )
-        solution.blocks[demand_id] = block
+        block_ids: list[int] = []
+        for copy_index in range(redundant_blocks):
+            block_id = demand_id * 100 + copy_index + 1
+            solution.blocks[block_id] = Block(
+                block_id=block_id,
+                from_yard_id=demand.origin_yard_id,
+                to_yard_id=demand.dest_yard_id,
+                block_type=default_block_type(demand.commodity_type),
+                volume=demand.effective_volume(instance.settings),
+            )
+            solution.routes[block_id] = BlockRoute(
+                block_id=block_id,
+                node_ids=route.node_ids,
+                link_ids=route.link_ids,
+            )
+            block_ids.append(block_id)
+
         solution.sequences[demand_id] = BlockingSequence(
             demand_id=demand_id,
-            block_ids=(demand_id,),
+            block_ids=(block_ids[0],),
             volume=demand.effective_volume(instance.settings),
-        )
-        solution.routes[demand_id] = BlockRoute(
-            block_id=demand_id,
-            node_ids=route.node_ids,
-            link_ids=route.link_ids,
         )
 
     return solution
 
 
-def build_case(instance, instance_id: str) -> tuple[ExperimentCase, DijkstraRouter]:
+def build_case(
+    instance, instance_id: str, *, redundant_blocks: int = 1
+) -> tuple[ExperimentCase, DijkstraRouter]:
     router = DijkstraRouter(instance)
     context = MoveContext(instance=instance, router=router)
     generator = RBPMoveGenerator(
@@ -159,7 +174,7 @@ def build_case(instance, instance_id: str) -> tuple[ExperimentCase, DijkstraRout
         ExperimentCase(
             instance_id=instance_id,
             instance=instance,
-            initial_solution=build_direct_seed(instance, router),
+            initial_solution=build_direct_seed(instance, router, redundant_blocks=redundant_blocks),
             generator=generator,
             evaluator=ExactRBPMoveEvaluator(context),
             applier=RBPMoveApplier(context),
@@ -202,6 +217,13 @@ def parse_args() -> argparse.Namespace:
         help="search iterations for each selector run",
     )
     parser.add_argument(
+        "--redundant-blocks",
+        type=int,
+        default=1,
+        help="number of identical direct blocks per demand in the experimental seed; "
+             "2 creates a deliberately overbuilt but locally reducible seed",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("artifacts/l1-first-experiment"),
@@ -216,15 +238,19 @@ def main() -> None:
         raise ValueError("--test-fraction must be between 0 and 1")
 
     base = load_instance(args.data)
-    selected = choose_demand_ids(base, args.demands)
+    selected = choose_demand_ids(base, args.demands, redundant_blocks=args.redundant_blocks)
     test_count = max(1, round(len(selected) * args.test_fraction))
     train_ids = selected[:-test_count]
     test_ids = selected[-test_count:]
 
     train_instance = make_slice(base, train_ids)
     test_instance = make_slice(base, test_ids)
-    train_case, train_router = build_case(train_instance, "l1-demand-train")
-    test_case, test_router = build_case(test_instance, "l1-demand-test")
+    train_case, train_router = build_case(
+        train_instance, "l1-demand-train", redundant_blocks=args.redundant_blocks
+    )
+    test_case, test_router = build_case(
+        test_instance, "l1-demand-test", redundant_blocks=args.redundant_blocks
+    )
 
     train_yards = {
         y
@@ -299,6 +325,7 @@ def main() -> None:
                 "test_demand_ids": test_ids,
                 "dataset_iterations": args.dataset_iterations,
                 "max_iterations": args.max_iterations,
+                "redundant_blocks": args.redundant_blocks,
                 "note": "train/test are demand slices of one L1 physical network",
             },
             indent=2,
