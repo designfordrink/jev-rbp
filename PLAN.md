@@ -2,19 +2,46 @@
 
 ## Current checkpoint
 
-**Phase 8 — JEV v0 experiment harness implemented.**
+**Phase 9 — Multi-instance JEV experiment runner implemented.**
 
-PR #9 (Phase 7 dataset generation) is merged with successful CI.
+Phase 8 established JEV v0 and grouped ranking metrics. Phase 9 now adds the
+reproducible runner that compares selectors over the same RBP instances while
+keeping the candidate generator, exact evaluator, validator, initial solution,
+and exact-evaluation budget fixed.
 
-Phase 8 now contains:
-- [x] deterministic linear delta scorer;
-- [x] ridge regularization without a heavyweight ML dependency;
-- [x] learned selector interface with no exact-evaluator access;
-- [x] initial unit tests;
-- [x] JEV v0 protocol documentation.
+Current status:
+- [x] deterministic linear JEV scorer;
+- [x] train/test split by instance;
+- [x] Top-K hit-rate and exact-delta regret metrics;
+- [x] multi-instance selector experiment runner;
+- [x] exact-evaluation budget accounting;
+- [x] benchmark-authority final scoring;
+- [x] runner unit tests;
+- [ ] download/prepare a frozen set of public L1 instances;
+- [ ] generate the first real multi-instance JEV dataset;
+- [ ] run Identity / Random / RBP Greedy / Linear JEV under K=1, 5, 10;
+- [ ] record first scientific results;
+- [ ] add runtime and repeated-seed measurements.
 
-The first experimental comparison still requires a multi-instance dataset and
-a grouped evaluation harness.
+## Scientific rule
+
+At every JEV comparison, keep constant:
+- instance;
+- initial solution;
+- candidate generator;
+- exact evaluator;
+- validator;
+- compute/evaluation budget.
+
+Only the selector should change.
+
+Dataset generation may spend an unlimited exact-evaluation budget because it is
+a separate offline labeling stage. Search comparisons must use the declared
+per-phase exact-evaluation budget.
+
+An Oracle selector is an **upper bound**, not a valid JEV competitor: it uses
+the exact evaluator to rank candidates and therefore violates the information
+boundary of the learned selector.
 
 ## Phase 0 — Repository foundation
 
@@ -47,19 +74,9 @@ Remaining archaeology:
 - [ ] exact tie-breaking;
 - [ ] exact routing caches/optimizations;
 - [ ] deterministic reference run;
-- [ ] any remaining benchmark/reference discrepancies.
+- [ ] remaining benchmark/reference discrepancies.
 
 ## Phase 3 — Vanilla VLNS reproduction
-
-### 3A — Benchmark archaeology
-
-- [x] identify public RAS v2.1 mirror;
-- [x] recover CSV schemas;
-- [x] recover solution JSON schema;
-- [x] inspect validator C1–C9b;
-- [x] freeze objective/stress-score semantics.
-
-### 3B — Search and routing
 
 - [x] physical shortest-path router;
 - [x] physical links treated bidirectionally for routing;
@@ -69,59 +86,36 @@ Remaining archaeology:
 - [x] block-volume aggregation;
 - [x] unused-block pruning;
 - [x] reference Drop/Add/Swap phase ordering;
-- [x] regression tests.
-
-### 3C — Exact move evaluation
-
-- [x] generate legal Drop candidates;
-- [x] generate legal Add candidates;
-- [x] generate legal Swap candidates;
-- [x] apply candidate virtually;
-- [x] reroute;
-- [x] calculate exact objective delta;
-- [x] check reference move-level feasibility;
-- [x] reproduce acceptance tolerance;
-- [ ] reproduce stopping semantics.
-
-### 3D — Benchmark authority
-
-- [x] full independent C1–C9b validator;
-- [x] complete fixed + transport + handling + interchange objective;
+- [x] exact move evaluation;
+- [x] independent benchmark authority;
 - [ ] link-capacity-aware physical routing;
-- [x] stress score;
-- [ ] solution serializer/parser compatibility.
-
-### 3E — Reproduction
-
-- [ ] reproduce a deterministic small reference instance;
-- [ ] compare objective components;
-- [ ] compare selected moves;
-- [ ] document any irreducible differences.
+- [ ] deterministic small-instance reproduction.
 
 ## Phase 4 — Instrumentation
 
+- [x] phase-level search trace;
 - [ ] JSONL search trace;
 - [ ] state hash;
 - [ ] candidate IDs;
-- [ ] exact evaluation counter;
+- [x] exact evaluation counter;
 - [ ] timing;
 - [ ] experiment metadata;
 - [ ] reproducible run directory.
 
 ## Phase 5 — Candidate quality
 
-- [ ] measure candidate-pool size;
-- [ ] measure legal/illegal ratio;
-- [ ] measure how often best exact move is present;
-- [ ] characterize Drop/Add/Swap separately.
+- [ ] candidate-pool size;
+- [ ] legal/illegal ratio;
+- [ ] best exact move coverage;
+- [ ] Drop/Add/Swap characterization.
 
 ## Phase 6 — Selector baselines
 
 - [x] Random;
 - [x] Identity;
 - [x] hand-designed Greedy selector;
-- [ ] exact Oracle selector;
-- [ ] common evaluation-budget harness.
+- [x] exact Oracle selector;
+- [x] common evaluation-budget harness.
 
 ## Phase 7 — JEV dataset
 
@@ -136,8 +130,8 @@ Remaining archaeology:
 - [x] linear scorer;
 - [ ] shallow MLP;
 - [ ] pairwise ranker;
-- [ ] Top-K hit rate;
-- [ ] regret;
+- [x] Top-K hit rate;
+- [x] regret;
 - [ ] ranking correlation.
 
 ## Phase 9 — JEV-VLNS
@@ -145,10 +139,11 @@ Remaining archaeology:
 - [ ] Top-1;
 - [ ] Top-5;
 - [ ] Top-10;
-- [ ] fixed evaluation budget comparison;
+- [x] fixed evaluation-budget runner;
 - [ ] runtime comparison;
 - [ ] quality comparison;
-- [ ] multiple seeds.
+- [ ] multiple seeds;
+- [ ] first real multi-instance experiment.
 
 ## Phase 10 and later
 
@@ -158,19 +153,3 @@ Remaining archaeology:
 - [ ] LLM-generated neighborhoods;
 - [ ] heuristic evolution;
 - [ ] JEV-Star.
-
-## Scientific rule
-
-At every JEV comparison, keep constant:
-
-- instance;
-- initial solution;
-- candidate generator;
-- exact evaluator;
-- validator;
-- compute/evaluation budget.
-
-Only the selector should change.
-
-A JEV model that obtains a better objective by simply spending more exact
-evaluations is not, by itself, evidence that the selector is better.
