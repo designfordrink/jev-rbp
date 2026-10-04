@@ -21,8 +21,14 @@ class MoveContext:
 class RBPMoveGenerator:
     """Generate deterministic Drop/Add/Swap candidate pools."""
 
-    def __init__(self, context: MoveContext) -> None:
+    def __init__(
+        self,
+        context: MoveContext,
+        *,
+        candidate_yards: set[int] | None = None,
+    ) -> None:
         self.context = context
+        self.candidate_yards = candidate_yards
         self._candidates = self._build_candidates()
 
     def generate_phase(self, state: Solution, phase: str):
@@ -47,6 +53,10 @@ class RBPMoveGenerator:
             node.node_id
             for node in self.context.instance.nodes.values()
             if node.node_type == "yard"
+            and (
+                self.candidate_yards is None
+                or node.node_id in self.candidate_yards
+            )
         )
         commodity_types = sorted(
             {demand.commodity_type for demand in self.context.instance.demands.values()},
