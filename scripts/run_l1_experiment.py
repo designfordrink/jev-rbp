@@ -20,6 +20,7 @@ from jev_rbp.dataset import (
     write_jsonl,
 )
 from jev_rbp.experiment_runner import ExperimentCase, run_selector_suite
+from jev_rbp.experiments import grouped_ranking_metrics
 from jev_rbp.jev import LinearJEVSelector, fit_linear_jev
 from jev_rbp.io import load_instance
 from jev_rbp.moves import (
@@ -32,33 +33,63 @@ from jev_rbp.moves import (
 from jev_rbp.rbp_selectors import RBPGreedySelector
 from jev_rbp.routing import DijkstraRouter
 from jev_rbp.selectors import IdentitySelector, RandomSelector
-from jev_rbp.problem import Block, BlockRoute, Solution, default_block_type
+from jev_rbp.problem import (
+    Block,
+    BlockRoute,
+    BlockingSequence,
+    Solution,
+    default_block_type,
+)
 
 
 def choose_demand_ids(instance, count: int) -> list[int]:
-    """Choose deterministic demands while keeping origins mostly distinct.
+    """Choose deterministic demands with individually feasible direct blocks.
 
-    Distinct origins keep the first seed small enough for the real L1 prototype
-    to avoid immediately exceeding a yard's track count.
+    The first prototype needs a benchmark-feasible seed. We therefore keep
+    demands whose direct shortest-path block already satisfies minimum volume
+    and physical link-capacity checks, while keeping origins distinct.
     """
 
     if count <= 0:
         raise ValueError("count must be positive")
 
+    router = DijkstraRouter(instance)
     selected: list[int] = []
     used_origins: set[int] = set()
+
     for demand_id in sorted(instance.demands):
         demand = instance.demands[demand_id]
         if demand.origin_yard_id in used_origins:
             continue
+
+        route = router.shortest_path(demand.origin_yard_id, demand.dest_yard_id)
+        if route is None:
+            continue
+
+        volume = demand.effective_volume(instance.settings)
+        if route.distance < 100:
+            minimum = instance.settings.min_block_vol_short
+        elif route.distance <= 500:
+            minimum = instance.settings.min_block_vol_medium
+        else:
+            minimum = instance.settings.min_block_vol_long
+        if volume + 1e-6 < minimum:
+            continue
+
+        if any(
+            volume > instance.links[link_id].capacity
+            for link_id in route.link_ids
+        ):
+            continue
+
         selected.append(demand_id)
         used_origins.add(demand.origin_yard_id)
         if len(selected) == count:
             return selected
 
     raise ValueError(
-        f"could only find {len(selected)} demands with distinct origins; "
-        f"requested {count}"
+        f"could only find {len(selected)} individually feasible demands with "
+        f"distinct origins; requested {count}"
     )
 
 
@@ -99,6 +130,11 @@ def build_direct_seed(instance, router: DijkstraRouter) -> Solution:
             volume=demand.effective_volume(instance.settings),
         )
         solution.blocks[demand_id] = block
+        solution.sequences[demand_id] = BlockingSequence(
+            demand_id=demand_id,
+            block_ids=(demand_id,),
+            volume=demand.effective_volume(instance.settings),
+        )
         solution.routes[demand_id] = BlockRoute(
             block_id=demand_id,
             node_ids=route.node_ids,
@@ -221,11 +257,37 @@ def main() -> None:
 
     model = fit_linear_jev(train_rows)
 
+    test_rows = collect_jev_dataset(
+        test_case.initial_solution,
+        test_case.generator,
+        test_case.evaluator,
+        test_case.applier,
+        test_instance,
+        test_router,
+        instance_id=test_case.instance_id,
+        max_iterations=1,
+        feature_extractor=make_rbp_feature_extractor(test_instance, test_router),
+    )
+    ranking = {
+        str(k): asdict(
+            grouped_ranking_metrics(
+                test_rows,
+                lambda row: model.predict_features(row.features),
+                k=k,
+            )
+        )
+        for k in (1, 5, 10)
+    }
+
     output = args.output
     output.mkdir(parents=True, exist_ok=True)
     write_jsonl(train_rows, output / "train.jsonl")
     (output / "model.json").write_text(
         json.dumps(asdict(model), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    (output / "ranking.json").write_text(
+        json.dumps(ranking, indent=2, sort_keys=True),
         encoding="utf-8",
     )
     (output / "config.json").write_text(
@@ -285,6 +347,14 @@ def main() -> None:
     )
 
     print(f"training rows: {len(train_rows)}")
+    print(f"test ranking rows: {len(test_rows)}")
+    for k, metrics in ranking.items():
+        print(
+            f"linear-jev ranking K={k}: "
+            f"pools={metrics['pools']} "
+            f"top_k_hit_rate={metrics['top_k_hit_rate']:.3f} "
+            f"mean_regret={metrics['mean_regret']:.6f}"
+        )
     print(f"results: {output / 'results.csv'}")
     for result in all_results:
         print(

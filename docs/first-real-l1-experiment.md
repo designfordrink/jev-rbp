@@ -45,10 +45,10 @@ A real generalization claim requires independent instances. Demand slices from t
 
 Run date: 2026-10-04.
 
-The first successful GitHub Actions run used:
-- 6 selected L1 demands;
-- 4 train demands / 2 test demands;
-- 6 active yards in train / 4 active yards in test;
+After fixing the direct-block seed, the first meaningful real-data run used:
+- 12 selected L1 demands that passed individual direct-seed feasibility checks;
+- 8 train demands / 4 test demands;
+- 12 active yards in train / 8 active yards in test;
 - 1 offline dataset iteration;
 - 2 search iterations;
 - K=1, 5, 10 exact evaluations per phase;
@@ -59,37 +59,63 @@ SHA-256 matched:
 
     db9a6f2900e5011d632567882f91fbb7a42f19a40e2450fd0c2e8733a4d62e37
 
-The training dataset contained 134 exact candidate labels.
+The training dataset contained 1,124 exact candidate labels. The separate test
+ranking dataset contained 264 exact candidate labels.
 
-Observed test results:
+### Final-search result
 
 | Selector | K | Exact evals | Operating cost | Stress Score | Feasible |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Identity | 1/5/10 | 3/12/22 | 5000.00 | 13631418.58 | no |
-| Random | 1/5/10 | 3/12/22 | 5000.00 | 13631418.58 | no |
-| RBP Greedy | 1/5/10 | 3/12/22 | 5000.00 | 13631418.58 | no |
-| Linear JEV | 1/5/10 | 3/12/22 | 5000.00 | 13631418.58 | no |
+| Identity | 1 | 3 | 7,261,129.02 | 7,261,129.02 | yes |
+| Random | 1 | 3 | 7,261,129.02 | 7,261,129.02 | yes |
+| RBP Greedy | 1 | 3 | 7,261,129.02 | 7,261,129.02 | yes |
+| Linear JEV | 1 | 3 | 7,261,129.02 | 7,261,129.02 | yes |
+| Identity | 5 | 14 | 7,261,129.02 | 7,261,129.02 | yes |
+| Random | 5 | 14 | 7,261,129.02 | 7,261,129.02 | yes |
+| RBP Greedy | 5 | 14 | 7,261,129.02 | 7,261,129.02 | yes |
+| Linear JEV | 5 | 14 | 7,261,129.02 | 7,261,129.02 | yes |
+| Identity | 10 | 24 | 7,261,129.02 | 7,261,129.02 | yes |
+| Random | 10 | 24 | 7,261,129.02 | 7,261,129.02 | yes |
+| RBP Greedy | 10 | 24 | 7,261,129.02 | 7,261,129.02 | yes |
+| Linear JEV | 10 | 24 | 7,261,129.02 | 7,261,129.02 | yes |
 
-### Interpretation
+No selector accepted an improving move in this slice, so final-search quality
+cannot distinguish the four selectors yet.
 
-This is a negative result, not evidence that the selectors are equivalent.
+### Local ranking result
 
-All selectors started from the same simple direct-block seed and none found an
-accepted improving move that produced a benchmark-feasible final solution on
-this tiny test slice. Consequently the final operating cost remained at the
-seed-level value of 5000.00 and all selector rankings collapsed to the same
-result.
+The new ranking diagnostic evaluates whether Linear JEV ranks the exact best
+candidate near the top of each reached candidate pool.
 
-The most important next task is therefore not to tune Linear JEV. We first
-need a valid/meaningful experimental seed and a test slice on which at least
-some candidate moves can improve the benchmark-authoritative result. Otherwise
-the selector has no useful signal to learn from.
+| K | Pools with feasible candidates | Top-K hit rate | Mean regret |
+| ---: | ---: | ---: | ---: |
+| 1 | 1 | 1.000 | 0.000000 |
+| 5 | 1 | 1.000 | 0.000000 |
+| 10 | 1 | 1.000 | 0.000000 |
 
-This also reveals a performance characteristic: even the 6-demand slice took
-about 67 seconds to execute because exact move evaluation repeatedly performs
-routing over the full physical L1 network. A larger experiment should therefore
-add routing/evaluation reuse or another explicit computational budget before
-increasing the number of demands.
+This is a useful sanity check, but **not evidence of JEV superiority**: only one
+candidate pool contained a feasible candidate suitable for the ranking metric.
+The next experiment must deliberately generate more independent candidate
+pools and, ideally, some genuinely improving moves.
+
+### What we learned
+
+1. The initial direct seed must be benchmark-complete, including blocking
+   sequences; otherwise C1 makes every final result invalid.
+2. The seed must also satisfy basic direct-block minimum-volume and link-capacity
+   constraints before it is used for selector comparison.
+3. On the current real L1 slice, the direct seed is feasible but already locally
+   strong enough that no selector improved it.
+4. The current exact evaluator is expensive: the 12-demand experiment took
+   several minutes because candidate evaluation repeatedly routes over the full
+   physical L1 network.
+5. Linear JEV's first ranking sanity check is promising but statistically
+   meaningless at one feasible pool.
+
+The next scientific step is therefore to construct a set of small but
+non-trivial L1 instances/seeds where multiple candidate actions are feasible
+and at least some actions have different exact deltas. Only then should we
+compare JEV against RBP Greedy and Random as a selector.
 
 ## Run the first controlled experiment
 
