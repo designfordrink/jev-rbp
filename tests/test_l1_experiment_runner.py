@@ -1,6 +1,6 @@
 from jev_rbp.actions import AddAction
 from jev_rbp.moves import MoveContext, RBPMoveGenerator
-from jev_rbp.problem import CommodityType, Demand, Link, Node, RBPInstance, Settings
+from jev_rbp.problem import CommodityType, Demand, Link, Node, RBPInstance, Settings, Solution
 from jev_rbp.routing import DijkstraRouter
 
 
@@ -16,7 +16,7 @@ def test_candidate_generator_preserves_commodity_type():
     )
     generator = RBPMoveGenerator(MoveContext(instance, DijkstraRouter(instance)))
 
-    actions = generator.generate_phase(__import__("jev_rbp.problem", fromlist=["Solution"]).Solution(), "add")
+    actions = generator.generate_phase(Solution(), "add")
 
     assert len(actions) == 2
     assert all(isinstance(action, AddAction) for action in actions)
