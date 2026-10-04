@@ -28,10 +28,10 @@ jobs:
         run: |
           python scripts/run_l1_experiment.py \
             --data data/ras2026-v2.1/l1 \
-            --demands 12 \
+            --demands 6 \
             --test-fraction 0.3333333333333333 \
             --dataset-iterations 1 \
-            --max-iterations 3 \
+            --max-iterations 2 \
             --output artifacts/l1-first-experiment
 
       - name: Upload experiment artifacts
