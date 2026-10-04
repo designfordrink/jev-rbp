@@ -111,7 +111,7 @@ def test_candidate_yard_filter_is_optional():
     }
     instance = RBPInstance(nodes=nodes, links={}, demands={}, settings=Settings())
     generator = RBPMoveGenerator(
-        MoveContext(instance, EmptyRouter()),
+        MoveContext(instance, DijkstraRouter(instance)),
         candidate_yards={1, 2},
     )
 
