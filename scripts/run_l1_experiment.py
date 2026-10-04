@@ -63,7 +63,10 @@ def choose_demand_ids(instance, count: int, *, redundant_blocks: int = 1) -> lis
         demand = instance.demands[demand_id]
         if demand.origin_yard_id in used_origins:
             continue
-        if redundant_blocks > 1 and instance.nodes[demand.origin_yard_id].num_tracks < redundant_blocks:
+        if (
+            redundant_blocks > 1
+            and instance.nodes[demand.origin_yard_id].num_tracks < redundant_blocks
+        ):
             continue
 
         route = router.shortest_path(demand.origin_yard_id, demand.dest_yard_id)
