@@ -150,3 +150,33 @@ The public RAS v2.1 release describes the archived L1 input as 47,193 nodes,
 distinguishes those archived-file statistics from the published competition
 design table. See the upstream release and README before comparing results with
 official benchmark cases.
+
+
+## Second experiment: non-trivial local search seed
+
+The first run showed that the direct seed is already locally locked: removing a
+direct block makes its demand unroutable, so the selectors cannot demonstrate
+different search behavior.
+
+The next experiment therefore adds an explicit `--redundant-blocks 2` mode.
+For selected origins with at least two outgoing tracks, the seed contains two
+identical direct blocks for each demand while the demand sequence uses only one.
+The seed remains a controlled experiment, not an official competition solution.
+
+This creates a deliberately reducible local neighborhood: dropping the unused
+duplicate should preserve feasibility and remove a fixed block cost. The purpose
+is to create measurable action deltas, not to claim that duplicate blocks are a
+good RBP strategy.
+
+The GitHub Actions workflow uses this mode for the next manual run. Its key
+question is now:
+
+> Can Linear JEV rank the improving Drop actions near the top of a real RAS L1
+> candidate pool, and does that ranking translate into a lower final objective
+> under the same exact-evaluation budget?
+
+If the experiment still produces no useful feasible/improving pools, the next
+step is not a larger JEV model. We should instead build a small controlled
+multi-demand consolidation seed where several demands can share one block,
+because that tests the actual RBP search interactions rather than only the
+mechanics of dropping redundant blocks.
