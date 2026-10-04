@@ -32,7 +32,13 @@ from jev_rbp.moves import (
 from jev_rbp.rbp_selectors import RBPGreedySelector
 from jev_rbp.routing import DijkstraRouter
 from jev_rbp.selectors import IdentitySelector, RandomSelector
-from jev_rbp.problem import (\n    Block,\n    BlockRoute,\n    BlockingSequence,\n    Solution,\n    default_block_type,\n)
+from jev_rbp.problem import (
+    Block,
+    BlockRoute,
+    BlockingSequence,
+    Solution,
+    default_block_type,
+)
 
 
 def choose_demand_ids(instance, count: int) -> list[int]:
