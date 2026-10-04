@@ -20,6 +20,7 @@ from jev_rbp.dataset import (
     write_jsonl,
 )
 from jev_rbp.experiment_runner import ExperimentCase, run_selector_suite
+from jev_rbp.experiments import grouped_ranking_metrics
 from jev_rbp.jev import LinearJEVSelector, fit_linear_jev
 from jev_rbp.io import load_instance
 from jev_rbp.moves import (
@@ -256,11 +257,37 @@ def main() -> None:
 
     model = fit_linear_jev(train_rows)
 
+    test_rows = collect_jev_dataset(
+        test_case.initial_solution,
+        test_case.generator,
+        test_case.evaluator,
+        test_case.applier,
+        test_instance,
+        test_router,
+        instance_id=test_case.instance_id,
+        max_iterations=1,
+        feature_extractor=make_rbp_feature_extractor(test_instance, test_router),
+    )
+    ranking = {
+        str(k): asdict(
+            grouped_ranking_metrics(
+                test_rows,
+                lambda row: model.predict_features(row.features),
+                k=k,
+            )
+        )
+        for k in (1, 5, 10)
+    }
+
     output = args.output
     output.mkdir(parents=True, exist_ok=True)
     write_jsonl(train_rows, output / "train.jsonl")
     (output / "model.json").write_text(
         json.dumps(asdict(model), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    (output / "ranking.json").write_text(
+        json.dumps(ranking, indent=2, sort_keys=True),
         encoding="utf-8",
     )
     (output / "config.json").write_text(
@@ -320,6 +347,14 @@ def main() -> None:
     )
 
     print(f"training rows: {len(train_rows)}")
+    print(f"test ranking rows: {len(test_rows)}")
+    for k, metrics in ranking.items():
+        print(
+            f"linear-jev ranking K={k}: "
+            f"pools={metrics['pools']} "
+            f"top_k_hit_rate={metrics['top_k_hit_rate']:.3f} "
+            f"mean_regret={metrics['mean_regret']:.6f}"
+        )
     print(f"results: {output / 'results.csv'}")
     for result in all_results:
         print(
