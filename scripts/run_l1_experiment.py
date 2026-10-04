@@ -32,7 +32,7 @@ from jev_rbp.moves import (
 from jev_rbp.rbp_selectors import RBPGreedySelector
 from jev_rbp.routing import DijkstraRouter
 from jev_rbp.selectors import IdentitySelector, RandomSelector
-from jev_rbp.problem import Block, BlockRoute, Solution, default_block_type
+from jev_rbp.problem import (\n    Block,\n    BlockRoute,\n    BlockingSequence,\n    Solution,\n    default_block_type,\n)
 
 
 def choose_demand_ids(instance, count: int) -> list[int]:
@@ -99,6 +99,11 @@ def build_direct_seed(instance, router: DijkstraRouter) -> Solution:
             volume=demand.effective_volume(instance.settings),
         )
         solution.blocks[demand_id] = block
+        solution.sequences[demand_id] = BlockingSequence(
+            demand_id=demand_id,
+            block_ids=(demand_id,),
+            volume=demand.effective_volume(instance.settings),
+        )
         solution.routes[demand_id] = BlockRoute(
             block_id=demand_id,
             node_ids=route.node_ids,
