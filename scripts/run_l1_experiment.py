@@ -42,29 +42,53 @@ from jev_rbp.problem import (
 
 
 def choose_demand_ids(instance, count: int) -> list[int]:
-    """Choose deterministic demands while keeping origins mostly distinct.
+    """Choose deterministic demands with individually feasible direct blocks.
 
-    Distinct origins keep the first seed small enough for the real L1 prototype
-    to avoid immediately exceeding a yard's track count.
+    The first prototype needs a benchmark-feasible seed. We therefore keep
+    demands whose direct shortest-path block already satisfies minimum volume
+    and physical link-capacity checks, while keeping origins distinct.
     """
 
     if count <= 0:
         raise ValueError("count must be positive")
 
+    router = DijkstraRouter(instance)
     selected: list[int] = []
     used_origins: set[int] = set()
+
     for demand_id in sorted(instance.demands):
         demand = instance.demands[demand_id]
         if demand.origin_yard_id in used_origins:
             continue
+
+        route = router.shortest_path(demand.origin_yard_id, demand.dest_yard_id)
+        if route is None:
+            continue
+
+        volume = demand.effective_volume(instance.settings)
+        if route.distance < 100:
+            minimum = instance.settings.min_block_vol_short
+        elif route.distance <= 500:
+            minimum = instance.settings.min_block_vol_medium
+        else:
+            minimum = instance.settings.min_block_vol_long
+        if volume + 1e-6 < minimum:
+            continue
+
+        if any(
+            volume > instance.links[link_id].capacity
+            for link_id in route.link_ids
+        ):
+            continue
+
         selected.append(demand_id)
         used_origins.add(demand.origin_yard_id)
         if len(selected) == count:
             return selected
 
     raise ValueError(
-        f"could only find {len(selected)} demands with distinct origins; "
-        f"requested {count}"
+        f"could only find {len(selected)} individually feasible demands with "
+        f"distinct origins; requested {count}"
     )
 
 
