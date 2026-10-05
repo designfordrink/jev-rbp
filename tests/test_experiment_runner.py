@@ -77,3 +77,16 @@ def test_suite_runs_each_selector_on_each_instance():
         ("b", "identity"),
         ("b", "random"),
     ]
+
+
+def test_runner_supports_canonical_vanilla_vlns():
+    result = run_selector_case(
+        case(),
+        None,
+        selector_name="vanilla-vlns",
+        exact_evaluation_budget=None,
+        max_iterations=1,
+    )
+
+    assert result.exact_evaluations == 0
+    assert result.benchmark_feasible is True
