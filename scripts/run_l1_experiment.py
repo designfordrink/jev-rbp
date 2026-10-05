@@ -32,7 +32,14 @@ from jev_rbp.moves import (
     RBPMoveGenerator,
     RBPMoveValidator,
 )
-from jev_rbp.problem import Block, BlockRoute, BlockingSequence, RBPInstance, Solution, default_block_type
+from jev_rbp.problem import (
+    Block,
+    BlockRoute,
+    BlockingSequence,
+    RBPInstance,
+    Solution,
+    default_block_type,
+)
 from jev_rbp.rbp_selectors import RBPGreedySelector
 from jev_rbp.routing import DijkstraRouter
 from jev_rbp.selectors import IdentitySelector, RandomSelector
