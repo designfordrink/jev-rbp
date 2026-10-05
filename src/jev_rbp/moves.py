@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .actions import AddAction, DropAction, SwapAction
+from .benchmark import BenchmarkAuthority
 from .core import CandidateAction, Evaluation, ValidationResult
 from .objective import evaluate_solution
 from .problem import Block, BlockType, CommodityType, RBPInstance, Solution
@@ -122,28 +123,23 @@ class ExactRBPMoveEvaluator:
             return Evaluation(before.total, float("inf"), False)
 
         candidate = rerouted.solution
-        if _reference_move_violations(
-            self.context.instance, candidate, self.context.router
-        ):
+        report = BenchmarkAuthority(self.context.instance).validate(candidate)
+        if not report.feasible:
             return Evaluation(before.total, float("inf"), False)
 
-        after = evaluate_solution(
-            self.context.instance, candidate, self.context.router
-        )
-        return Evaluation(before.total, after.total, True)
+        assert report.cost is not None
+        return Evaluation(before.total, report.cost.total, True)
 
 
 class RBPMoveValidator:
-    """Validate accepted moves with the same C2/C4a checks as reference VLNS."""
+    """Validate search states with the independent benchmark authority."""
 
     def __init__(self, context: MoveContext) -> None:
         self.context = context
 
     def validate(self, state: Solution) -> ValidationResult:
-        violations = _reference_move_violations(
-            self.context.instance, state, self.context.router
-        )
-        return ValidationResult(not violations, tuple(violations))
+        report = BenchmarkAuthority(self.context.instance).validate(state)
+        return ValidationResult(report.feasible, tuple(report.violations))
 
 
 def _virtual_open_blocks(state: Solution, action: CandidateAction) -> dict[int, Block]:
@@ -177,47 +173,6 @@ def _virtual_open_blocks(state: Solution, action: CandidateAction) -> dict[int, 
         return blocks
 
     raise TypeError(f"unsupported action: {action!r}")
-
-
-def _reference_move_violations(
-    instance: RBPInstance,
-    solution: Solution,
-    router: DijkstraRouter,
-) -> list[str]:
-    """Check the C2 and C4a conditions used inside the reference VLNS."""
-
-    violations: list[str] = []
-
-    outgoing: dict[int, int] = {}
-    for block in solution.blocks.values():
-        outgoing[block.from_yard_id] = outgoing.get(block.from_yard_id, 0) + 1
-
-    for yard_id, count in outgoing.items():
-        tracks = instance.nodes[yard_id].num_tracks
-        if tracks > 0 and count > tracks:
-            violations.append(
-                f"C2: yard {yard_id} has {count} outgoing blocks > {tracks} tracks"
-            )
-
-    for block in solution.blocks.values():
-        route = solution.routes.get(block.block_id)
-        if route is not None:
-            distance = sum(
-                instance.links[link_id].length
-                for link_id in route.link_ids
-                if link_id in instance.links
-            )
-        else:
-            physical = router.shortest_path(block.from_yard_id, block.to_yard_id)
-            distance = physical.distance if physical is not None else float("inf")
-
-        minimum = _minimum_block_volume(instance, distance)
-        if block.volume + 1e-6 < minimum:
-            violations.append(
-                f"C4a: block {block.block_id} volume {block.volume} < {minimum}"
-            )
-
-    return violations
 
 
 def _minimum_block_volume(instance: RBPInstance, distance: float) -> float:
