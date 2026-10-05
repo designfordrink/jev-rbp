@@ -227,6 +227,137 @@ def _reference_iteration_results(
     return tuple(results)
 
 
+
+
+@dataclass(frozen=True)
+class SearchRunResult:
+    """Shared result for all selector-controlled VLNS experiments."""
+
+    state: SearchState
+    trace: SearchTrace
+    iterations: int
+    accepted_moves: int
+
+
+def run_vlns(
+    state: SearchState,
+    generator: PhaseMoveGenerator,
+    evaluator: MoveEvaluator,
+    applier: MoveApplier,
+    validator: StateValidator,
+    *,
+    selector: Selector | None = None,
+    exact_evaluations_per_phase: int | None = None,
+    max_iterations: int = 200,
+) -> SearchRunResult:
+    """Run canonical Drop -> Add -> conditional Swap control flow."""
+    if max_iterations < 0:
+        raise ValueError("max_iterations must be non-negative")
+    if exact_evaluations_per_phase is not None and exact_evaluations_per_phase < 0:
+        raise ValueError("exact_evaluations_per_phase must be non-negative")
+
+    phases: list[PhaseTrace] = []
+    accepted_moves = 0
+
+    for iteration in range(max_iterations):
+        drop = _run_canonical_phase(
+            state, iteration, "drop", generator, evaluator, applier, validator,
+            selector, exact_evaluations_per_phase,
+        )
+        state = drop.state
+        phases.append(drop.trace)
+        accepted_moves += int(drop.accepted)
+
+        add = _run_canonical_phase(
+            state, iteration, "add", generator, evaluator, applier, validator,
+            selector, exact_evaluations_per_phase,
+        )
+        state = add.state
+        phases.append(add.trace)
+        accepted_moves += int(add.accepted)
+
+        swap = None
+        if not drop.accepted and not add.accepted:
+            swap = _run_canonical_phase(
+                state, iteration, "swap", generator, evaluator, applier, validator,
+                selector, exact_evaluations_per_phase,
+            )
+            state = swap.state
+            phases.append(swap.trace)
+            accepted_moves += int(swap.accepted)
+
+        if not (drop.accepted or add.accepted or (swap is not None and swap.accepted)):
+            break
+
+    return SearchRunResult(
+        state=state,
+        trace=SearchTrace(tuple(phases)),
+        iterations=iteration + 1 if max_iterations else 0,
+        accepted_moves=accepted_moves,
+    )
+
+
+@dataclass(frozen=True)
+class _PhaseRunResult:
+    state: SearchState
+    trace: PhaseTrace
+    accepted: bool
+
+
+def _run_canonical_phase(
+    state: SearchState,
+    iteration: int,
+    phase: str,
+    generator: PhaseMoveGenerator,
+    evaluator: MoveEvaluator,
+    applier: MoveApplier,
+    validator: StateValidator,
+    selector: Selector | None,
+    exact_evaluations_per_phase: int | None,
+) -> _PhaseRunResult:
+    candidates = list(generator.generate_phase(state, phase))
+    ranked = candidates if selector is None else list(selector.rank(state, candidates))
+    selected = (
+        ranked
+        if selector is None or exact_evaluations_per_phase is None
+        else ranked[:exact_evaluations_per_phase]
+    )
+    best = choose_best_improvement(evaluator, state, selected)
+
+    if best is None:
+        return _PhaseRunResult(
+            state=state,
+            trace=PhaseTrace(
+                iteration=iteration,
+                phase=phase,
+                candidates=len(candidates),
+                evaluated=len(selected),
+                accepted=False,
+                best_delta=None,
+            ),
+            accepted=False,
+        )
+
+    new_state = applier.apply(state, best[0])
+    validation = validator.validate(new_state)
+    if not validation.valid:
+        raise ValueError(
+            f"accepted move produced invalid state: {validation.violations}"
+        )
+
+    return _PhaseRunResult(
+        state=new_state,
+        trace=PhaseTrace(
+            iteration=iteration,
+            phase=phase,
+            candidates=len(candidates),
+            evaluated=len(selected),
+            accepted=True,
+            best_delta=best[1].delta,
+        ),
+        accepted=True,
+    )
+
 def choose_best_improvement(
     evaluator: MoveEvaluator,
     state: SearchState,
