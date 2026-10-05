@@ -187,6 +187,31 @@ def build_case(
     )
 
 
+
+def _diagnostic_pool(rows, key, model):
+    return {
+        "iteration": key[0],
+        "phase": key[1],
+        "state": {
+            "objective_before": rows[0].objective_before,
+            "candidate_count": len(rows),
+        },
+        "candidates": [
+            {
+                "candidate_index": row.candidate_index,
+                "action_type": row.action_type,
+                "action_payload": row.action_payload,
+                "features": row.features,
+                "feasible": row.feasible,
+                "delta": row.delta,
+                "is_improving": row.is_improving,
+                "jev_predicted_delta": model.predict_features(row.features),
+            }
+            for row in rows
+        ],
+    }
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -297,7 +322,23 @@ def main() -> None:
         max_iterations=1,
         feature_extractor=make_rbp_feature_extractor(test_instance, test_router),
     )
-    # Persist the information actually available to JEV so a bad ranking can\n    # be diagnosed as either a selector problem or an information-bottleneck problem.\n    diagnostic_pools = []\n    current_key = None\n    current_rows = []\n    for row in test_rows:\n        key = (row.iteration, row.phase)\n        if current_key is not None and key != current_key:\n            rows = current_rows\n            diagnostic_pools.append({\n                "iteration": current_key[0],\n                "phase": current_key[1],\n                "state": {\n                    "objective_before": rows[0].objective_before,\n                    "candidate_count": len(rows),\n                    "open_block_count": rows[0].features.get("open_block_count"),\n                    "demand_count": rows[0].features.get("demand_count"),\n                },\n                "candidates": [\n                    {\n                        "candidate_index": r.candidate_index,\n                        "action_type": r.action_type,\n                        "action_payload": r.action_payload,\n                        "features": r.features,\n                        "feasible": r.feasible,\n                        "delta": r.delta,\n                        "is_improving": r.is_improving,\n                        "jev_predicted_delta": model.predict_features(r.features),\n                    }\n                    for r in rows\n                ],\n            })\n            current_rows = []\n        current_key = key\n        current_rows.append(row)\n    if current_key is not None:\n        rows = current_rows\n        diagnostic_pools.append({\n            "iteration": current_key[0],\n            "phase": current_key[1],\n            "state": {\n                "objective_before": rows[0].objective_before,\n                "candidate_count": len(rows),\n                "open_block_count": rows[0].features.get("open_block_count"),\n                "demand_count": rows[0].features.get("demand_count"),\n            },\n            "candidates": [\n                {\n                    "candidate_index": r.candidate_index,\n                    "action_type": r.action_type,\n                    "action_payload": r.action_payload,\n                    "features": r.features,\n                    "feasible": r.feasible,\n                    "delta": r.delta,\n                    "is_improving": r.is_improving,\n                    "jev_predicted_delta": model.predict_features(r.features),\n                }\n                for r in rows\n            ],\n        })\n\n    ranking = {
+    # Persist the information actually available to JEV so a bad ranking can
+    # be diagnosed as either a selector problem or an information-bottleneck problem.
+    diagnostic_pools = []
+    current_key = None
+    current_rows = []
+    for row in test_rows:
+        key = (row.iteration, row.phase)
+        if current_key is not None and key != current_key:
+            rows = current_rows
+            diagnostic_pools.append(_diagnostic_pool(rows, current_key, model))
+            current_rows = []
+        current_key = key
+        current_rows.append(row)
+    if current_key is not None:
+        diagnostic_pools.append(_diagnostic_pool(current_rows, current_key, model))
+
+    ranking = {
         str(k): asdict(
             grouped_ranking_metrics(
                 test_rows,
