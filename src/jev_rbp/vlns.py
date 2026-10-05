@@ -226,6 +226,7 @@ def _reference_iteration_results(
         )
     return tuple(results)
 
+
 def choose_best_improvement(
     evaluator: MoveEvaluator,
     state: SearchState,
