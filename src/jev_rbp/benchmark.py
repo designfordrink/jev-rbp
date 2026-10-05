@@ -1,4 +1,4 @@
-"""Independent RAS v2.0 benchmark authority.
+"""Independent RAS v2.1 benchmark authority.
 
 This module is deliberately separate from VLNS/JEV.  It validates a complete
 solution against the public benchmark rules and computes operating cost plus
@@ -55,7 +55,7 @@ class BenchmarkReport:
 
 
 class BenchmarkAuthority:
-    """Independent implementation of the released RAS v2.0 checks."""
+    """Independent implementation of the released RAS v2.1 checks."""
 
     def __init__(self, instance: RBPInstance) -> None:
         self.instance = instance
@@ -90,55 +90,24 @@ class BenchmarkAuthority:
         actual_volumes: dict[int, float] | None = None,
         distances: dict[int, float] | None = None,
     ) -> BenchmarkCost:
+        """Return the canonical operating cost plus benchmark car-miles."""
+
+        from .objective import evaluate_solution
+
+        objective = evaluate_solution(self.instance, solution, self.router)
         actual_volumes = actual_volumes or self._actual_block_volumes(solution)
         distances = distances or self._route_distances(solution, BenchmarkReport())
+        total_car_miles = sum(
+            actual_volumes.get(block_id, 0.0) * distances.get(block_id, 0.0)
+            for block_id in solution.blocks
+        )
 
-        fixed = len(solution.blocks) * self.instance.settings.block_fixed_cost
-        transport = 0.0
-        total_car_miles = 0.0
-
-        for block_id, block in solution.blocks.items():
-            volume = actual_volumes.get(block_id, 0.0)
-            distance = distances.get(block_id, 0.0)
-            car_miles = volume * distance
-            total_car_miles += car_miles
-            transport += (
-                car_miles * self.instance.settings.transport_cost_coefficient
-            )
-
-        handling = 0.0
-        for sequence in solution.sequences.values():
-            for block_id in sequence.block_ids[:-1]:
-                block = solution.blocks.get(block_id)
-                if block is not None:
-                    handling += (
-                        sequence.volume
-                        * self.instance.nodes[block.to_yard_id].handling_cost
-                    )
-
-        interchange = 0.0
-        for block_id, volume in actual_volumes.items():
-            if volume <= 0:
-                continue
-            block = solution.blocks.get(block_id)
-            if block is None:
-                continue
-            origin_rr = _class_i_railroad(
-                self.instance.nodes[block.from_yard_id].railroad_id
-            )
-            dest_rr = _class_i_railroad(
-                self.instance.nodes[block.to_yard_id].railroad_id
-            )
-            if origin_rr and dest_rr and origin_rr != dest_rr:
-                interchange += volume * self.instance.settings.interchange_cost
-
-        total = fixed + transport + handling + interchange
         return BenchmarkCost(
-            fixed=fixed,
-            transport=transport,
-            handling=handling,
-            interchange=interchange,
-            total=total,
+            fixed=objective.fixed_block,
+            transport=objective.transport,
+            handling=objective.handling,
+            interchange=objective.interchange,
+            total=objective.total,
             total_car_miles=total_car_miles,
         )
 
