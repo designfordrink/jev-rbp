@@ -3,6 +3,7 @@ from jev_rbp.moves import (
     ExactRBPMoveEvaluator,
     MoveContext,
     RBPMoveGenerator,
+    RBPMoveApplier,
 )
 from jev_rbp.problem import (
     Block,
