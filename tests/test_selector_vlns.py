@@ -5,6 +5,7 @@ from jev_rbp.core import Evaluation, ValidationResult
 from jev_rbp.problem import CommodityType
 from jev_rbp.selectors import IdentitySelector
 from jev_rbp.selector_vlns import SelectorVLNSConfig, SelectorVLNSSolver
+from jev_rbp.vlns import run_vlns
 
 
 @dataclass(frozen=True)
@@ -89,3 +90,34 @@ def test_none_budget_means_evaluate_all_candidates():
     _, trace = solver.solve_with_trace(State(10.0))
 
     assert trace.phases[0].evaluated == 3
+
+
+def test_selector_wrapper_uses_canonical_vlns_loop():
+    generator = Generator()
+    evaluator = Evaluator()
+    applier = Applier()
+    validator = Validator()
+    selector = IdentitySelector()
+
+    wrapper_state, wrapper_trace = SelectorVLNSSolver(
+        generator,
+        selector,
+        evaluator,
+        applier,
+        validator,
+        SelectorVLNSConfig(max_iterations=1, exact_evaluations_per_phase=1),
+    ).solve_with_trace(State(10.0))
+
+    canonical = run_vlns(
+        State(10.0),
+        generator,
+        evaluator,
+        applier,
+        validator,
+        selector=selector,
+        exact_evaluations_per_phase=1,
+        max_iterations=1,
+    )
+
+    assert wrapper_state == canonical.state
+    assert wrapper_trace == canonical.trace
