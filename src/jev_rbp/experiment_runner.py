@@ -28,7 +28,11 @@ class ExperimentCase:
 
 @dataclass(frozen=True)
 class SelectorRunResult:
-    """Outcome of one selector on one instance under one exact-evaluation budget."""
+    """Outcome of one selector on one instance under one exact-evaluation budget.
+
+    ``selector=None`` is canonical Vanilla VLNS: the engine evaluates the
+    complete candidate pool instead of ranking it with a selector.
+    """
 
     selector: str
     instance_id: str
@@ -41,12 +45,12 @@ class SelectorRunResult:
     benchmark_feasible: bool
 
 
-SelectorFactory = Callable[[ExperimentCase], Selector]
+SelectorFactory = Callable[[ExperimentCase], Selector | None]
 
 
 def run_selector_case(
     case: ExperimentCase,
-    selector: Selector,
+    selector: Selector | None,
     *,
     selector_name: str,
     exact_evaluation_budget: int | None,
@@ -54,6 +58,7 @@ def run_selector_case(
 ) -> SelectorRunResult:
     """Run one selector while keeping every other search component fixed.
 
+    ``selector=None`` runs canonical Vanilla VLNS (full candidate evaluation).
     The benchmark evaluation happens only after the search and is not counted
     as an exact move evaluation. This keeps the search-budget accounting
     comparable across selectors.

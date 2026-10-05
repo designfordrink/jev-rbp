@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-**Phase 9 — Multi-instance JEV experiment runner implemented.**
+**Phase 9 — Controlled real-data experiment v2 implemented.**
 
 Phase 8 established JEV v0 and grouped ranking metrics. Phase 9 now adds the
 reproducible runner that compares selectors over the same RBP instances while
@@ -143,7 +143,7 @@ Remaining archaeology:
 - [ ] runtime comparison;
 - [ ] quality comparison;
 - [ ] multiple seeds;
-- [ ] first real multi-instance experiment.
+- [x] first real multi-case experiment protocol;
 
 ## Phase 10 and later
 

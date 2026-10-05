@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Run the first controlled real-data RAS L1 JEV experiment.
+"""Run the second controlled RAS L1 experiment.
 
-This is a prototype experiment on demand slices from one public L1 physical
-network. It is useful for exercising the real loader/search stack, but the
-slices are not independent benchmark instances.
+This experiment uses several demand-pattern cases cut from the same public L1
+physical network. They are deliberately called *cases*, not independent
+benchmark instances: sharing the physical network limits the generalization
+claim. The same candidate generator, exact evaluator, validator and
+acceptance rule are used for every selector.
+
+Vanilla VLNS is represented by selector=None in the canonical search engine.
+It is expensive because it evaluates the complete candidate pool; use
+--include-vanilla when a full baseline run is desired.
 """
 
 from __future__ import annotations
@@ -14,15 +20,11 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from jev_rbp.dataset import (
-    collect_jev_dataset,
-    make_rbp_feature_extractor,
-    write_jsonl,
-)
+from jev_rbp.dataset import collect_jev_dataset, make_rbp_feature_extractor, write_jsonl
 from jev_rbp.experiment_runner import ExperimentCase, run_selector_suite
 from jev_rbp.experiments import grouped_ranking_metrics
-from jev_rbp.jev import LinearJEVSelector, fit_linear_jev
 from jev_rbp.io import load_instance
+from jev_rbp.jev import LinearJEVSelector, fit_linear_jev
 from jev_rbp.moves import (
     ExactRBPMoveEvaluator,
     MoveContext,
@@ -30,30 +32,21 @@ from jev_rbp.moves import (
     RBPMoveGenerator,
     RBPMoveValidator,
 )
-from jev_rbp.rbp_selectors import RBPGreedySelector
-from jev_rbp.routing import DijkstraRouter
-from jev_rbp.selectors import IdentitySelector, RandomSelector
 from jev_rbp.problem import (
     Block,
     BlockRoute,
     BlockingSequence,
+    RBPInstance,
     Solution,
     default_block_type,
 )
+from jev_rbp.rbp_selectors import RBPGreedySelector
+from jev_rbp.routing import DijkstraRouter
+from jev_rbp.selectors import IdentitySelector, RandomSelector
 
 
-def choose_demand_ids(instance, count: int, *, redundant_blocks: int = 1) -> list[int]:
-    """Choose deterministic demands with individually feasible direct blocks.
-
-    The first prototype needs a benchmark-feasible seed. We therefore keep
-    demands whose direct shortest-path block already satisfies minimum volume
-    and physical link-capacity checks, while keeping origins distinct.
-    """
-
-    if count <= 0:
-        raise ValueError("count must be positive")
-    if redundant_blocks < 1:
-        raise ValueError("redundant_blocks must be positive")
+def choose_demand_ids(instance, count: int) -> list[int]:
+    """Choose direct-seed-safe demands with distinct origins."""
 
     router = DijkstraRouter(instance)
     selected: list[int] = []
@@ -63,16 +56,9 @@ def choose_demand_ids(instance, count: int, *, redundant_blocks: int = 1) -> lis
         demand = instance.demands[demand_id]
         if demand.origin_yard_id in used_origins:
             continue
-        if (
-            redundant_blocks > 1
-            and instance.nodes[demand.origin_yard_id].num_tracks < redundant_blocks
-        ):
-            continue
-
         route = router.shortest_path(demand.origin_yard_id, demand.dest_yard_id)
         if route is None:
             continue
-
         volume = demand.effective_volume(instance.settings)
         if route.distance < 100:
             minimum = instance.settings.min_block_vol_short
@@ -82,102 +68,67 @@ def choose_demand_ids(instance, count: int, *, redundant_blocks: int = 1) -> lis
             minimum = instance.settings.min_block_vol_long
         if volume + 1e-6 < minimum:
             continue
-
-        if any(
-            volume > instance.links[link_id].capacity
-            for link_id in route.link_ids
-        ):
+        if any(volume > instance.links[link_id].capacity for link_id in route.link_ids):
             continue
-
         selected.append(demand_id)
         used_origins.add(demand.origin_yard_id)
         if len(selected) == count:
             return selected
 
-    raise ValueError(
-        f"could only find {len(selected)} individually feasible demands with "
-        f"distinct origins; requested {count}"
-    )
+    raise ValueError(f"could only find {len(selected)} safe demands; requested {count}")
 
 
-def make_slice(base, demand_ids: list[int]):
-    demands = {demand_id: base.demands[demand_id] for demand_id in demand_ids}
-    from jev_rbp.problem import RBPInstance
-
+def make_slice(base: RBPInstance, demand_ids: list[int]) -> RBPInstance:
     return RBPInstance(
         nodes=base.nodes,
         links=base.links,
-        demands=demands,
+        demands={demand_id: base.demands[demand_id] for demand_id in demand_ids},
         settings=base.settings,
     )
 
 
-def build_direct_seed(
-    instance, router: DijkstraRouter, *, redundant_blocks: int = 1
-) -> Solution:
-    """Build one direct block per selected demand.
-
-    This is intentionally a simple experimental seed, not the official
-    competition greedy solver.
-    """
-
-    if redundant_blocks < 1:
-        raise ValueError("redundant_blocks must be positive")
-
+def build_direct_seed(instance: RBPInstance, router: DijkstraRouter) -> Solution:
     solution = Solution()
     for demand_id in sorted(instance.demands):
         demand = instance.demands[demand_id]
         route = router.shortest_path(demand.origin_yard_id, demand.dest_yard_id)
         if route is None:
-            raise ValueError(
-                f"demand {demand_id} has no physical route "
-                f"{demand.origin_yard_id}->{demand.dest_yard_id}"
-            )
-
-        block_ids: list[int] = []
-        for copy_index in range(redundant_blocks):
-            block_id = demand_id * 100 + copy_index + 1
-            solution.blocks[block_id] = Block(
-                block_id=block_id,
-                from_yard_id=demand.origin_yard_id,
-                to_yard_id=demand.dest_yard_id,
-                block_type=default_block_type(demand.commodity_type),
-                volume=demand.effective_volume(instance.settings),
-            )
-            solution.routes[block_id] = BlockRoute(
-                block_id=block_id,
-                node_ids=route.node_ids,
-                link_ids=route.link_ids,
-            )
-            block_ids.append(block_id)
-
-        solution.sequences[demand_id] = BlockingSequence(
-            demand_id=demand_id,
-            block_ids=(block_ids[0],),
+            raise ValueError(f"demand {demand_id} has no physical route")
+        block_id = demand_id * 100 + 1
+        solution.blocks[block_id] = Block(
+            block_id=block_id,
+            from_yard_id=demand.origin_yard_id,
+            to_yard_id=demand.dest_yard_id,
+            block_type=default_block_type(demand.commodity_type),
             volume=demand.effective_volume(instance.settings),
         )
-
+        solution.routes[block_id] = BlockRoute(
+            block_id=block_id,
+            node_ids=route.node_ids,
+            link_ids=route.link_ids,
+        )
+        solution.sequences[demand_id] = BlockingSequence(
+            demand_id=demand_id,
+            block_ids=(block_id,),
+            volume=demand.effective_volume(instance.settings),
+        )
     return solution
 
 
-def build_case(
-    instance, instance_id: str, *, redundant_blocks: int = 1
-) -> tuple[ExperimentCase, DijkstraRouter]:
+def build_case(instance: RBPInstance, instance_id: str) -> tuple[ExperimentCase, DijkstraRouter]:
     router = DijkstraRouter(instance)
     context = MoveContext(instance=instance, router=router)
-    generator = RBPMoveGenerator(
-        context,
-        candidate_yards={
-            yard_id
-            for demand in instance.demands.values()
-            for yard_id in (demand.origin_yard_id, demand.dest_yard_id)
-        },
-    )
+    active_yards = {
+        yard_id
+        for demand in instance.demands.values()
+        for yard_id in (demand.origin_yard_id, demand.dest_yard_id)
+    }
+    generator = RBPMoveGenerator(context, candidate_yards=active_yards)
     return (
         ExperimentCase(
             instance_id=instance_id,
             instance=instance,
-            initial_solution=build_direct_seed(instance, router, redundant_blocks=redundant_blocks),
+            initial_solution=build_direct_seed(instance, router),
             generator=generator,
             evaluator=ExactRBPMoveEvaluator(context),
             applier=RBPMoveApplier(context),
@@ -187,156 +138,85 @@ def build_case(
     )
 
 
-
-def _diagnostic_pool(rows, key, model):
-    return {
-        "iteration": key[0],
-        "phase": key[1],
-        "state": {
-            "objective_before": rows[0].objective_before,
-            "candidate_count": len(rows),
-        },
-        "candidates": [
-            {
-                "candidate_index": row.candidate_index,
-                "action_type": row.action_type,
-                "action_payload": row.action_payload,
-                "features": row.features,
-                "feasible": row.feasible,
-                "delta": row.delta,
-                "is_improving": row.is_improving,
-                "jev_predicted_delta": model.predict_features(row.features),
-            }
-            for row in rows
-        ],
-    }
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--data", type=Path, default=Path("data/ras2026-v2.1/l1"))
+    parser.add_argument("--demands", type=int, default=20)
+    parser.add_argument("--case-size", type=int, default=4)
+    parser.add_argument("--train-cases", type=int, default=3)
+    parser.add_argument("--dataset-iterations", type=int, default=2)
+    parser.add_argument("--max-iterations", type=int, default=2)
+    parser.add_argument("--include-vanilla", action="store_true")
     parser.add_argument(
-        "--data",
-        type=Path,
-        default=Path("data/ras2026-v2.1/l1"),
-        help="prepared RAS v2.1 L1 directory",
-    )
-    parser.add_argument(
-        "--demands",
-        type=int,
-        default=12,
-        help="total selected demands, split into train/test slices",
-    )
-    parser.add_argument(
-        "--test-fraction",
-        type=float,
-        default=1 / 3,
-        help="fraction of selected demands reserved for the test slice",
-    )
-    parser.add_argument(
-        "--dataset-iterations",
-        type=int,
-        default=1,
-        help="reference iterations used for offline JEV label collection",
-    )
-    parser.add_argument(
-        "--max-iterations",
-        type=int,
-        default=3,
-        help="search iterations for each selector run",
-    )
-    parser.add_argument(
-        "--redundant-blocks",
-        type=int,
-        default=1,
-        help="number of identical direct blocks per demand in the experimental seed; "
-             "2 creates a deliberately overbuilt but locally reducible seed",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("artifacts/l1-first-experiment"),
-        help="directory for experiment outputs",
+        "--output", type=Path, default=Path("artifacts/l1-experiment-v2")
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    if not 0.0 < args.test_fraction < 1.0:
-        raise ValueError("--test-fraction must be between 0 and 1")
+    if args.demands < args.case_size * (args.train_cases + 1):
+        raise ValueError("--demands must cover train cases plus at least one test case")
 
     base = load_instance(args.data)
-    selected = choose_demand_ids(base, args.demands, redundant_blocks=args.redundant_blocks)
-    test_count = max(1, round(len(selected) * args.test_fraction))
-    train_ids = selected[:-test_count]
-    test_ids = selected[-test_count:]
+    selected = choose_demand_ids(base, args.demands)
+    groups = [
+        selected[i : i + args.case_size]
+        for i in range(0, len(selected), args.case_size)
+    ]
+    cases = []
+    routers = {}
+    for index, demand_ids in enumerate(groups):
+        case, router = build_case(
+            make_slice(base, demand_ids),
+            f"l1-case-{index:02d}",
+        )
+        cases.append(case)
+        routers[case.instance_id] = router
 
-    train_instance = make_slice(base, train_ids)
-    test_instance = make_slice(base, test_ids)
-    train_case, train_router = build_case(
-        train_instance, "l1-demand-train", redundant_blocks=args.redundant_blocks
-    )
-    test_case, test_router = build_case(
-        test_instance, "l1-demand-test", redundant_blocks=args.redundant_blocks
-    )
+    train_cases = cases[: args.train_cases]
+    test_cases = cases[args.train_cases :]
+    if not test_cases:
+        raise ValueError("no test cases remain")
 
-    train_yards = {
-        y
-        for demand in train_instance.demands.values()
-        for y in (demand.origin_yard_id, demand.dest_yard_id)
-    }
-    test_yards = {
-        y
-        for demand in test_instance.demands.values()
-        for y in (demand.origin_yard_id, demand.dest_yard_id)
-    }
-    print(
-        f"L1 slice: {len(train_ids)} train demands / {len(test_ids)} test demands; "
-        f"train yards={len(train_yards)}, test yards={len(test_yards)}"
-    )
-
-    train_rows = collect_jev_dataset(
-        train_case.initial_solution,
-        train_case.generator,
-        train_case.evaluator,
-        train_case.applier,
-        train_instance,
-        train_router,
-        instance_id=train_case.instance_id,
-        max_iterations=args.dataset_iterations,
-        feature_extractor=make_rbp_feature_extractor(train_instance, train_router),
-    )
+    train_rows = []
+    for case in train_cases:
+        train_rows.extend(
+            collect_jev_dataset(
+                case.initial_solution,
+                case.generator,
+                case.evaluator,
+                case.applier,
+                case.instance,
+                routers[case.instance_id],
+                instance_id=case.instance_id,
+                max_iterations=args.dataset_iterations,
+                feature_extractor=make_rbp_feature_extractor(
+                    case.instance, routers[case.instance_id]
+                ),
+            )
+        )
     if not train_rows:
         raise RuntimeError("JEV training dataset is empty")
-
     model = fit_linear_jev(train_rows)
 
-    test_rows = collect_jev_dataset(
-        test_case.initial_solution,
-        test_case.generator,
-        test_case.evaluator,
-        test_case.applier,
-        test_instance,
-        test_router,
-        instance_id=test_case.instance_id,
-        max_iterations=1,
-        feature_extractor=make_rbp_feature_extractor(test_instance, test_router),
-    )
-    # Persist the information actually available to JEV so a bad ranking can
-    # be diagnosed as either a selector problem or an information-bottleneck problem.
-    diagnostic_pools = []
-    current_key = None
-    current_rows = []
-    for row in test_rows:
-        key = (row.iteration, row.phase)
-        if current_key is not None and key != current_key:
-            rows = current_rows
-            diagnostic_pools.append(_diagnostic_pool(rows, current_key, model))
-            current_rows = []
-        current_key = key
-        current_rows.append(row)
-    if current_key is not None:
-        diagnostic_pools.append(_diagnostic_pool(current_rows, current_key, model))
+    test_rows = []
+    for case in test_cases:
+        test_rows.extend(
+            collect_jev_dataset(
+                case.initial_solution,
+                case.generator,
+                case.evaluator,
+                case.applier,
+                case.instance,
+                routers[case.instance_id],
+                instance_id=case.instance_id,
+                max_iterations=args.dataset_iterations,
+                feature_extractor=make_rbp_feature_extractor(
+                    case.instance, routers[case.instance_id]
+                ),
+            )
+        )
 
     ranking = {
         str(k): asdict(
@@ -349,88 +229,93 @@ def main() -> None:
         for k in (1, 5, 10)
     }
 
-    output = args.output
-    output.mkdir(parents=True, exist_ok=True)
-    write_jsonl(train_rows, output / "train.jsonl")
-    (output / "model.json").write_text(
-        json.dumps(asdict(model), indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
-    (output / "ranking.json").write_text(
-        json.dumps(ranking, indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
-    (output / "config.json").write_text(
-        json.dumps(
-            {
-                "data": str(args.data),
-                "selected_demand_ids": selected,
-                "train_demand_ids": train_ids,
-                "test_demand_ids": test_ids,
-                "dataset_iterations": args.dataset_iterations,
-                "max_iterations": args.max_iterations,
-                "redundant_blocks": args.redundant_blocks,
-                "note": "train/test are demand slices of one L1 physical network",
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-
     def jev_factory(case: ExperimentCase):
-        router = DijkstraRouter(case.instance)
         return LinearJEVSelector(
             model,
-            make_rbp_feature_extractor(case.instance, router),
+            make_rbp_feature_extractor(case.instance, routers[case.instance_id]),
         )
 
     selectors = {
         "identity": lambda _: IdentitySelector(),
         "random": lambda case: RandomSelector(
-            seed=0 if case.instance_id.endswith("train") else 1
+            seed=1000 + int(case.instance_id.rsplit("-", 1)[1])
         ),
         "rbp-greedy": lambda case: RBPGreedySelector(
-            case.instance, DijkstraRouter(case.instance)
+            case.instance, routers[case.instance_id]
         ),
         "linear-jev": jev_factory,
     }
+    if args.include_vanilla:
+        selectors["vanilla-vlns"] = lambda _: None
 
-    all_results = []
+    results = []
     for budget in (1, 5, 10):
-        all_results.extend(
+        results.extend(
             run_selector_suite(
-                [test_case],
+                test_cases,
                 selectors,
                 exact_evaluation_budget=budget,
                 max_iterations=args.max_iterations,
             )
         )
 
-    with (output / "results.csv").open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=list(asdict(all_results[0]).keys()))
-        writer.writeheader()
-        for result in all_results:
-            writer.writerow(asdict(result))
-
-    (output / "results.json").write_text(
-        json.dumps([asdict(result) for result in all_results], indent=2),
+    output = args.output
+    output.mkdir(parents=True, exist_ok=True)
+    write_jsonl(train_rows, output / "train.jsonl")
+    write_jsonl(test_rows, output / "test.jsonl")
+    (output / "model.json").write_text(
+        json.dumps(asdict(model), indent=2, sort_keys=True), encoding="utf-8"
+    )
+    (output / "ranking.json").write_text(
+        json.dumps(ranking, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    (output / "config.json").write_text(
+        json.dumps(
+            {
+                "selected_demand_ids": selected,
+                "case_demand_ids": [sorted(case.instance.demands) for case in cases],
+                "train_case_ids": [case.instance_id for case in train_cases],
+                "test_case_ids": [case.instance_id for case in test_cases],
+                "dataset_iterations": args.dataset_iterations,
+                "max_iterations": args.max_iterations,
+                "exact_budgets": [1, 5, 10],
+                "include_vanilla": args.include_vanilla,
+                "important_note": (
+                    "Cases share the same L1 physical network and are not "
+                    "independent benchmark instances."
+                ),
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
 
-    print(f"training rows: {len(train_rows)}")
-    print(f"test ranking rows: {len(test_rows)}")
+    if results:
+        with (output / "results.csv").open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=list(asdict(results[0]).keys()))
+            writer.writeheader()
+            for result in results:
+                writer.writerow(asdict(result))
+        (output / "results.json").write_text(
+            json.dumps([asdict(result) for result in results], indent=2),
+            encoding="utf-8",
+        )
+
+    print(
+        f"cases={len(cases)} train={len(train_cases)} test={len(test_cases)} "
+        f"train_rows={len(train_rows)} test_rows={len(test_rows)}"
+    )
     for k, metrics in ranking.items():
         print(
-            f"linear-jev ranking K={k}: "
-            f"pools={metrics['pools']} "
+            f"JEV ranking K={k}: pools={metrics['pools']} "
             f"top_k_hit_rate={metrics['top_k_hit_rate']:.3f} "
             f"mean_regret={metrics['mean_regret']:.6f}"
         )
-    print(f"results: {output / 'results.csv'}")
-    for result in all_results:
+    for result in results:
         print(
-            f"{result.selector:12s} K={result.exact_evaluation_budget:<2} "
-            f"evals={result.exact_evaluations:<4} "
+            f"{result.instance_id} {result.selector:12s} "
+            f"K={result.exact_evaluation_budget!s:>4} "
+            f"evals={result.exact_evaluations:<5} "
             f"cost={result.final_operating_cost:.2f} "
             f"stress={result.final_stress_score:.2f} "
             f"feasible={result.benchmark_feasible}"
