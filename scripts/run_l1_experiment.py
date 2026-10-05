@@ -20,7 +20,6 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from jev_rbp.benchmark import BenchmarkAuthority
 from jev_rbp.dataset import collect_jev_dataset, make_rbp_feature_extractor, write_jsonl
 from jev_rbp.experiment_runner import ExperimentCase, run_selector_suite
 from jev_rbp.experiments import grouped_ranking_metrics
