@@ -36,10 +36,11 @@ def grouped_ranking_metrics(
     *,
     k: int = 1,
 ) -> RankingMetrics:
-    """Measure Top-K oracle coverage and exact-delta regret.
+    """Measure Top-K optimal-delta coverage and exact-delta regret.
 
     A pool is one (instance, iteration, phase) group. Infeasible candidates
-    remain in the ranking, but cannot be the oracle.
+    remain in the ranking, but cannot be the oracle. Ties count as hits:
+    selecting any candidate within 1e-6 of the best feasible delta is optimal.
     """
 
     if k <= 0:
@@ -56,22 +57,23 @@ def grouped_ranking_metrics(
         feasible = [row for row in pool if row.feasible]
         if not feasible:
             continue
-        oracle = min(feasible, key=lambda row: row.delta)
+        oracle_delta = min(row.delta for row in feasible)
         ranked = sorted(
             enumerate(pool),
             key=lambda item: (score(item[1]), item[0]),
         )
         selected = ranked[:k]
-        if oracle.candidate_index in {
-            row.candidate_index for _, row in selected
-        }:
+        if any(
+            row.feasible and abs(row.delta - oracle_delta) <= 1e-6
+            for _, row in selected
+        ):
             hits += 1
         chosen = next(
             (row for _, row in ranked if row.feasible),
             None,
         )
         if chosen is not None:
-            regrets.append(chosen.delta - oracle.delta)
+            regrets.append(chosen.delta - oracle_delta)
 
     pool_count = len(regrets)
     return RankingMetrics(

@@ -157,7 +157,12 @@ def make_rbp_feature_extractor(
     instance: RBPInstance,
     router: DijkstraRouter,
 ) -> FeatureExtractor:
-    """Build a cheap RBP feature extractor with no exact-evaluation access."""
+    """Build cheap candidate features without exact-evaluation access.
+
+    The selector must be able to distinguish candidates by their role in the
+    current solution, not only by physical distance. In particular, a Drop
+    action needs to reveal whether the block is actually used by any demand.
+    """
 
     def extract(
         state: Solution,
@@ -178,6 +183,7 @@ def make_rbp_feature_extractor(
             block = state.blocks.get(action.block_id)
             if block is None:
                 return features
+            used_count, used_volume = _block_usage(state, action.block_id)
             features.update(
                 {
                     "drop_block_volume": float(block.volume),
@@ -187,9 +193,27 @@ def make_rbp_feature_extractor(
                     "drop_outgoing_degree": _outgoing_degree(
                         state, block.from_yard_id
                     ),
+                    "drop_used_by_demand_count": float(used_count),
+                    "drop_used_volume": float(used_volume),
+                    "drop_unused": float(used_count == 0),
+                    "drop_is_direct_demand_block": float(
+                        _direct_demand_volume(
+                            instance,
+                            block.from_yard_id,
+                            block.to_yard_id,
+                            block.block_type,
+                        )
+                        > 0.0
+                    ),
                 }
             )
         elif isinstance(action, AddAction):
+            direct_volume = _direct_demand_volume(
+                instance,
+                action.from_yard_id,
+                action.to_yard_id,
+                action.commodity_type,
+            )
             features.update(
                 {
                     "add_distance": _distance(
@@ -198,11 +222,21 @@ def make_rbp_feature_extractor(
                     "add_outgoing_degree": _outgoing_degree(
                         state, action.from_yard_id
                     ),
+                    "add_direct_demand_volume": direct_volume,
+                    "add_direct_demand_count": float(
+                        _direct_demand_count(
+                            instance,
+                            action.from_yard_id,
+                            action.to_yard_id,
+                            action.commodity_type,
+                        )
+                    ),
                 }
             )
         elif isinstance(action, SwapAction):
             dropped = state.blocks.get(action.drop_block_id)
             if dropped is not None:
+                used_count, used_volume = _block_usage(state, action.drop_block_id)
                 features.update(
                     {
                         "drop_block_volume": float(dropped.volume),
@@ -212,6 +246,9 @@ def make_rbp_feature_extractor(
                         "drop_outgoing_degree": _outgoing_degree(
                             state, dropped.from_yard_id
                         ),
+                        "drop_used_by_demand_count": float(used_count),
+                        "drop_used_volume": float(used_volume),
+                        "drop_unused": float(used_count == 0),
                     }
                 )
             features.update(
@@ -222,6 +259,12 @@ def make_rbp_feature_extractor(
                     "add_outgoing_degree": _outgoing_degree(
                         state, action.add_from_yard_id
                     ),
+                    "add_direct_demand_volume": _direct_demand_volume(
+                        instance,
+                        action.add_from_yard_id,
+                        action.add_to_yard_id,
+                        action.commodity_type,
+                    ),
                 }
             )
 
@@ -229,6 +272,45 @@ def make_rbp_feature_extractor(
 
     return extract
 
+
+def _block_usage(state: Solution, block_id: int) -> tuple[int, float]:
+    count = 0
+    volume = 0.0
+    for sequence in state.sequences.values():
+        if block_id in sequence.block_ids:
+            count += 1
+            volume += sequence.volume
+    return count, volume
+
+
+def _direct_demand_count(
+    instance: RBPInstance,
+    from_yard_id: int,
+    to_yard_id: int,
+    commodity_type,
+) -> int:
+    return sum(
+        1
+        for demand in instance.demands.values()
+        if demand.origin_yard_id == from_yard_id
+        and demand.dest_yard_id == to_yard_id
+        and demand.commodity_type == commodity_type
+    )
+
+
+def _direct_demand_volume(
+    instance: RBPInstance,
+    from_yard_id: int,
+    to_yard_id: int,
+    commodity_type,
+) -> float:
+    return sum(
+        demand.effective_volume(instance.settings)
+        for demand in instance.demands.values()
+        if demand.origin_yard_id == from_yard_id
+        and demand.dest_yard_id == to_yard_id
+        and demand.commodity_type == commodity_type
+    )
 
 def _distance(router: DijkstraRouter, from_yard_id: int, to_yard_id: int) -> float:
     route = router.shortest_path(from_yard_id, to_yard_id)

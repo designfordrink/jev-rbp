@@ -154,29 +154,59 @@ official benchmark cases.
 
 ## Second experiment: non-trivial local search seed
 
-The first run showed that the direct seed is already locally locked: removing a
-direct block makes its demand unroutable, so the selectors cannot demonstrate
-different search behavior.
+The redundant-block experiment completed successfully, but it exposed an
+important issue in the JEV input contract rather than producing a useful final
+search improvement.
 
-The next experiment therefore adds an explicit `--redundant-blocks 2` mode.
-For selected origins with at least two outgoing tracks, the seed contains two
-identical direct blocks for each demand while the demand sequence uses only one.
-The seed remains a controlled experiment, not an official competition solution.
+The seed contains two identical direct blocks for selected demands, while each
+demand sequence uses only one. In principle, dropping the unused duplicate is
+an improving move because it removes a fixed block cost without making the
+demand unroutable.
 
-This creates a deliberately reducible local neighborhood: dropping the unused
-duplicate should preserve feasibility and remove a fixed block cost. The purpose
-is to create measurable action deltas, not to claim that duplicate blocks are a
-good RBP strategy.
+The experiment nevertheless produced zero accepted moves for all selectors.
+The likely explanation is now clear from the selector interface: the original
+feature set did not tell JEV whether a candidate block was actually used by a
+demand. A used block and an unused duplicate could therefore look almost
+identical to the learned selector.
 
-The GitHub Actions workflow uses this mode for the next manual run. Its key
-question is now:
+This is an **input-contract problem**, not evidence that JEV cannot rank the
+action.
 
-> Can Linear JEV rank the improving Drop actions near the top of a real RAS L1
-> candidate pool, and does that ranking translate into a lower final objective
-> under the same exact-evaluation budget?
+The follow-up change adds cheap state-aware features:
 
-If the experiment still produces no useful feasible/improving pools, the next
-step is not a larger JEV model. We should instead build a small controlled
-multi-demand consolidation seed where several demands can share one block,
-because that tests the actual RBP search interactions rather than only the
-mechanics of dropping redundant blocks.
+- number of demands using the dropped block;
+- volume carried by the dropped block;
+- whether the dropped block is unused;
+- direct demand count for an Add candidate;
+- direct demand volume for an Add candidate.
+
+The ranking metric was also corrected so that tied candidates with the same
+optimal exact delta all count as valid Top-K hits.
+
+See `docs/jev-action-selection-contract.md` for the full JEV input contract,
+candidate menu, proposed LLM prompt, and the distinction between JEV-0,
+JEV-1, and future relational JEV-2.
+
+### Why this matters
+
+A JEV experiment must distinguish:
+
+1. JEV received enough information but chose badly;
+2. JEV did not receive the information needed to choose correctly.
+
+Only the first is evidence against the selector.
+
+Therefore the next experiment should explicitly record:
+
+- candidate menu;
+- features exposed to JEV;
+- JEV ranking;
+- exact evaluations of selected candidates;
+- optimal exact ranking.
+
+If the state-aware JEV-1 still fails on the controlled redundant-block
+test, then we should investigate the ranking model or candidate-budget logic.
+If it succeeds, we can move to a multi-demand consolidation seed, where the
+selector must reason about sharing and rerouting rather than merely removing
+an unused duplicate.
+
