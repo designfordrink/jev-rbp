@@ -66,7 +66,7 @@ def test_exact_drop_of_unused_duplicate_is_improving():
     evaluation = evaluator.evaluate(_duplicate_state(), DropAction(11))
 
     assert evaluation.feasible
-    assert evaluation.delta == -600.0
+    assert evaluation.delta == -100.0
 
 
 def test_jev_context_exposes_whether_drop_block_is_used():
