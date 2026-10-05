@@ -44,7 +44,7 @@ def test_grouped_metrics_treat_equal_optima_as_hits():
         row("a", 0, "drop", 1, -5.0),
         row("a", 0, "drop", 2, -2.0),
     )
-    metrics = grouped_ranking_metrics(rows, lambda item: -item.candidate_index, k=1)
+    metrics = grouped_ranking_metrics(rows, lambda item: item.candidate_index, k=1)
     assert metrics.pools == 1
     assert metrics.top_k_hit_rate == 1.0
     assert metrics.mean_regret == 0.0
