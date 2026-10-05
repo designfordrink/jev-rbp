@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from .core import CandidateAction, Evaluation, ValidationResult
+from .core import CandidateAction, Evaluation, Selector, ValidationResult
 from .trace import PhaseTrace, SearchTrace
 
 
@@ -129,7 +129,7 @@ class VLNSSolver:
 
 
 class ReferenceVLNSSolver:
-    """Recovered Drop -> Add -> conditional Swap VLNS control flow."""
+    """Compatibility wrapper for canonical Vanilla VLNS control flow."""
 
     def __init__(
         self,
@@ -148,100 +148,215 @@ class ReferenceVLNSSolver:
     def step(
         self, state: SearchState, iteration: int
     ) -> tuple[SearchState, ReferenceIterationResult]:
-        drop_evaluated, drop = self._best_phase(state, "drop")
-        drop_accepted = drop is not None
-        if drop is not None:
-            state = self._apply_checked(state, drop)
-
-        add_evaluated, add = self._best_phase(state, "add")
-        add_accepted = add is not None
-        if add is not None:
-            state = self._apply_checked(state, add)
-
-        swap_evaluated = 0
-        swap_accepted = False
-        if not drop_accepted and not add_accepted:
-            swap_evaluated, swap = self._best_phase(state, "swap")
-            swap_accepted = swap is not None
-            if swap is not None:
-                state = self._apply_checked(state, swap)
-
-        stopped = not (drop_accepted or add_accepted or swap_accepted)
-        return state, ReferenceIterationResult(
+        result = run_vlns(
+            state,
+            self.generator,
+            self.evaluator,
+            self.applier,
+            self.validator,
+            max_iterations=1,
+        )
+        phases = [p for p in result.trace.phases if p.iteration == 0]
+        lookup = {p.phase: p for p in phases}
+        drop = lookup["drop"]
+        add = lookup["add"]
+        swap = lookup.get("swap")
+        return result.state, ReferenceIterationResult(
             iteration=iteration,
-            drop_evaluated=drop_evaluated,
-            add_evaluated=add_evaluated,
-            swap_evaluated=swap_evaluated,
-            drop_accepted=drop_accepted,
-            add_accepted=add_accepted,
-            swap_accepted=swap_accepted,
-            stopped=stopped,
+            drop_evaluated=drop.evaluated,
+            add_evaluated=add.evaluated,
+            swap_evaluated=0 if swap is None else swap.evaluated,
+            drop_accepted=drop.accepted,
+            add_accepted=add.accepted,
+            swap_accepted=False if swap is None else swap.accepted,
+            stopped=not result.accepted_moves,
         )
 
     def solve(
         self, state: SearchState
     ) -> tuple[SearchState, tuple[ReferenceIterationResult, ...]]:
-        results: list[ReferenceIterationResult] = []
-        for iteration in range(self.config.max_iterations):
-            state, result = self.step(state, iteration)
-            results.append(result)
-            if result.stopped:
-                break
-        return state, tuple(results)
+        result = run_vlns(
+            state,
+            self.generator,
+            self.evaluator,
+            self.applier,
+            self.validator,
+            max_iterations=self.config.max_iterations,
+        )
+        return result.state, _reference_iteration_results(result.trace)
 
     def solve_with_trace(
         self, state: SearchState
     ) -> tuple[SearchState, SearchTrace]:
-        """Run reference VLNS and retain a stable phase-level experiment trace."""
-        phases: list[PhaseTrace] = []
-        for iteration in range(self.config.max_iterations):
-            drop_count, drop = self._best_phase(state, "drop")
-            drop_accepted = drop is not None
-            phases.append(_phase_trace(iteration, "drop", drop_count, drop))
-            if drop is not None:
-                state = self._apply_checked(state, drop)
-
-            add_count, add = self._best_phase(state, "add")
-            add_accepted = add is not None
-            phases.append(_phase_trace(iteration, "add", add_count, add))
-            if add is not None:
-                state = self._apply_checked(state, add)
-
-            swap = None
-            swap_count = 0
-            if not drop_accepted and not add_accepted:
-                swap_count, swap = self._best_phase(state, "swap")
-                phases.append(_phase_trace(iteration, "swap", swap_count, swap))
-                if swap is not None:
-                    state = self._apply_checked(state, swap)
-
-            if not (drop_accepted or add_accepted or swap is not None):
-                break
-        return state, SearchTrace(tuple(phases))
+        result = run_vlns(
+            state,
+            self.generator,
+            self.evaluator,
+            self.applier,
+            self.validator,
+            max_iterations=self.config.max_iterations,
+        )
+        return result.state, result.trace
 
 
-    def _best_phase(
-        self, state: SearchState, phase: str
-    ) -> tuple[int, tuple[CandidateAction, Evaluation] | None]:
-        candidates = list(self.generator.generate_phase(state, phase))
-        return len(candidates), choose_best_improvement(
-            self.evaluator, state, candidates
+def _reference_iteration_results(
+    trace: SearchTrace,
+) -> tuple[ReferenceIterationResult, ...]:
+    by_iteration: dict[int, list[PhaseTrace]] = {}
+    for phase in trace.phases:
+        by_iteration.setdefault(phase.iteration, []).append(phase)
+
+    results: list[ReferenceIterationResult] = []
+    for iteration, phases in sorted(by_iteration.items()):
+        lookup = {phase.phase: phase for phase in phases}
+        drop = lookup["drop"]
+        add = lookup["add"]
+        swap = lookup.get("swap")
+        results.append(
+            ReferenceIterationResult(
+                iteration=iteration,
+                drop_evaluated=drop.evaluated,
+                add_evaluated=add.evaluated,
+                swap_evaluated=0 if swap is None else swap.evaluated,
+                drop_accepted=drop.accepted,
+                add_accepted=add.accepted,
+                swap_accepted=False if swap is None else swap.accepted,
+                stopped=not any(p.accepted for p in phases),
+            )
+        )
+    return tuple(results)
+
+
+
+
+@dataclass(frozen=True)
+class SearchRunResult:
+    """Shared result for all selector-controlled VLNS experiments."""
+
+    state: SearchState
+    trace: SearchTrace
+    iterations: int
+    accepted_moves: int
+
+
+def run_vlns(
+    state: SearchState,
+    generator: PhaseMoveGenerator,
+    evaluator: MoveEvaluator,
+    applier: MoveApplier,
+    validator: StateValidator,
+    *,
+    selector: Selector | None = None,
+    exact_evaluations_per_phase: int | None = None,
+    max_iterations: int = 200,
+) -> SearchRunResult:
+    """Run canonical Drop -> Add -> conditional Swap control flow."""
+    if max_iterations < 0:
+        raise ValueError("max_iterations must be non-negative")
+    if exact_evaluations_per_phase is not None and exact_evaluations_per_phase < 0:
+        raise ValueError("exact_evaluations_per_phase must be non-negative")
+
+    phases: list[PhaseTrace] = []
+    accepted_moves = 0
+
+    for iteration in range(max_iterations):
+        drop = _run_canonical_phase(
+            state, iteration, "drop", generator, evaluator, applier, validator,
+            selector, exact_evaluations_per_phase,
+        )
+        state = drop.state
+        phases.append(drop.trace)
+        accepted_moves += int(drop.accepted)
+
+        add = _run_canonical_phase(
+            state, iteration, "add", generator, evaluator, applier, validator,
+            selector, exact_evaluations_per_phase,
+        )
+        state = add.state
+        phases.append(add.trace)
+        accepted_moves += int(add.accepted)
+
+        swap = None
+        if not drop.accepted and not add.accepted:
+            swap = _run_canonical_phase(
+                state, iteration, "swap", generator, evaluator, applier, validator,
+                selector, exact_evaluations_per_phase,
+            )
+            state = swap.state
+            phases.append(swap.trace)
+            accepted_moves += int(swap.accepted)
+
+        if not (drop.accepted or add.accepted or (swap is not None and swap.accepted)):
+            break
+
+    return SearchRunResult(
+        state=state,
+        trace=SearchTrace(tuple(phases)),
+        iterations=iteration + 1 if max_iterations else 0,
+        accepted_moves=accepted_moves,
+    )
+
+
+@dataclass(frozen=True)
+class _PhaseRunResult:
+    state: SearchState
+    trace: PhaseTrace
+    accepted: bool
+
+
+def _run_canonical_phase(
+    state: SearchState,
+    iteration: int,
+    phase: str,
+    generator: PhaseMoveGenerator,
+    evaluator: MoveEvaluator,
+    applier: MoveApplier,
+    validator: StateValidator,
+    selector: Selector | None,
+    exact_evaluations_per_phase: int | None,
+) -> _PhaseRunResult:
+    candidates = list(generator.generate_phase(state, phase))
+    ranked = candidates if selector is None else list(selector.rank(state, candidates))
+    selected = (
+        ranked
+        if selector is None or exact_evaluations_per_phase is None
+        else ranked[:exact_evaluations_per_phase]
+    )
+    best = choose_best_improvement(evaluator, state, selected)
+
+    if best is None:
+        return _PhaseRunResult(
+            state=state,
+            trace=PhaseTrace(
+                iteration=iteration,
+                phase=phase,
+                candidates=len(candidates),
+                evaluated=len(selected),
+                accepted=False,
+                best_delta=None,
+            ),
+            accepted=False,
         )
 
-    def _apply_checked(
-        self,
-        state: SearchState,
-        best: tuple[CandidateAction, Evaluation],
-    ) -> SearchState:
-        action, _ = best
-        new_state = self.applier.apply(state, action)
-        validation = self.validator.validate(new_state)
-        if not validation.valid:
-            raise ValueError(
-                f"accepted move produced invalid state: {validation.violations}"
-            )
-        return new_state
+    new_state = applier.apply(state, best[0])
+    validation = validator.validate(new_state)
+    if not validation.valid:
+        raise ValueError(
+            f"accepted move produced invalid state: {validation.violations}"
+        )
 
+    return _PhaseRunResult(
+        state=new_state,
+        trace=PhaseTrace(
+            iteration=iteration,
+            phase=phase,
+            candidates=len(candidates),
+            evaluated=len(selected),
+            accepted=True,
+            best_delta=best[1].delta,
+        ),
+        accepted=True,
+    )
 
 def choose_best_improvement(
     evaluator: MoveEvaluator,
