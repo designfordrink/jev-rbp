@@ -129,7 +129,7 @@ class VLNSSolver:
 
 
 class ReferenceVLNSSolver:
-    """Recovered Drop -> Add -> conditional Swap VLNS control flow."""
+    """Compatibility wrapper for canonical Vanilla VLNS control flow."""
 
     def __init__(
         self,
@@ -148,77 +148,83 @@ class ReferenceVLNSSolver:
     def step(
         self, state: SearchState, iteration: int
     ) -> tuple[SearchState, ReferenceIterationResult]:
-        drop_evaluated, drop = self._best_phase(state, "drop")
-        drop_accepted = drop is not None
-        if drop is not None:
-            state = self._apply_checked(state, drop)
-
-        add_evaluated, add = self._best_phase(state, "add")
-        add_accepted = add is not None
-        if add is not None:
-            state = self._apply_checked(state, add)
-
-        swap_evaluated = 0
-        swap_accepted = False
-        if not drop_accepted and not add_accepted:
-            swap_evaluated, swap = self._best_phase(state, "swap")
-            swap_accepted = swap is not None
-            if swap is not None:
-                state = self._apply_checked(state, swap)
-
-        stopped = not (drop_accepted or add_accepted or swap_accepted)
-        return state, ReferenceIterationResult(
+        result = run_vlns(
+            state,
+            self.generator,
+            self.evaluator,
+            self.applier,
+            self.validator,
+            max_iterations=1,
+        )
+        phases = [p for p in result.trace.phases if p.iteration == 0]
+        lookup = {p.phase: p for p in phases}
+        drop = lookup["drop"]
+        add = lookup["add"]
+        swap = lookup.get("swap")
+        return result.state, ReferenceIterationResult(
             iteration=iteration,
-            drop_evaluated=drop_evaluated,
-            add_evaluated=add_evaluated,
-            swap_evaluated=swap_evaluated,
-            drop_accepted=drop_accepted,
-            add_accepted=add_accepted,
-            swap_accepted=swap_accepted,
-            stopped=stopped,
+            drop_evaluated=drop.evaluated,
+            add_evaluated=add.evaluated,
+            swap_evaluated=0 if swap is None else swap.evaluated,
+            drop_accepted=drop.accepted,
+            add_accepted=add.accepted,
+            swap_accepted=False if swap is None else swap.accepted,
+            stopped=not result.accepted_moves,
         )
 
     def solve(
         self, state: SearchState
     ) -> tuple[SearchState, tuple[ReferenceIterationResult, ...]]:
-        results: list[ReferenceIterationResult] = []
-        for iteration in range(self.config.max_iterations):
-            state, result = self.step(state, iteration)
-            results.append(result)
-            if result.stopped:
-                break
-        return state, tuple(results)
+        result = run_vlns(
+            state,
+            self.generator,
+            self.evaluator,
+            self.applier,
+            self.validator,
+            max_iterations=self.config.max_iterations,
+        )
+        return result.state, _reference_iteration_results(result.trace)
 
     def solve_with_trace(
         self, state: SearchState
     ) -> tuple[SearchState, SearchTrace]:
-        """Run reference VLNS and retain a stable phase-level experiment trace."""
-        phases: list[PhaseTrace] = []
-        for iteration in range(self.config.max_iterations):
-            drop_count, drop = self._best_phase(state, "drop")
-            drop_accepted = drop is not None
-            phases.append(_phase_trace(iteration, "drop", drop_count, drop))
-            if drop is not None:
-                state = self._apply_checked(state, drop)
+        result = run_vlns(
+            state,
+            self.generator,
+            self.evaluator,
+            self.applier,
+            self.validator,
+            max_iterations=self.config.max_iterations,
+        )
+        return result.state, result.trace
 
-            add_count, add = self._best_phase(state, "add")
-            add_accepted = add is not None
-            phases.append(_phase_trace(iteration, "add", add_count, add))
-            if add is not None:
-                state = self._apply_checked(state, add)
 
-            swap = None
-            swap_count = 0
-            if not drop_accepted and not add_accepted:
-                swap_count, swap = self._best_phase(state, "swap")
-                phases.append(_phase_trace(iteration, "swap", swap_count, swap))
-                if swap is not None:
-                    state = self._apply_checked(state, swap)
+def _reference_iteration_results(
+    trace: SearchTrace,
+) -> tuple[ReferenceIterationResult, ...]:
+    by_iteration: dict[int, list[PhaseTrace]] = {}
+    for phase in trace.phases:
+        by_iteration.setdefault(phase.iteration, []).append(phase)
 
-            if not (drop_accepted or add_accepted or swap is not None):
-                break
-        return state, SearchTrace(tuple(phases))
-
+    results: list[ReferenceIterationResult] = []
+    for iteration, phases in sorted(by_iteration.items()):
+        lookup = {phase.phase: phase for phase in phases}
+        drop = lookup["drop"]
+        add = lookup["add"]
+        swap = lookup.get("swap")
+        results.append(
+            ReferenceIterationResult(
+                iteration=iteration,
+                drop_evaluated=drop.evaluated,
+                add_evaluated=add.evaluated,
+                swap_evaluated=0 if swap is None else swap.evaluated,
+                drop_accepted=drop.accepted,
+                add_accepted=add.accepted,
+                swap_accepted=False if swap is None else swap.accepted,
+                stopped=not any(p.accepted for p in phases),
+            )
+        )
+    return tuple(results)
 
     def _best_phase(
         self, state: SearchState, phase: str
