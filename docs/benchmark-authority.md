@@ -6,7 +6,7 @@
 
 The solver may propose a solution. The benchmark authority decides whether the solution satisfies the benchmark constraints and computes benchmark cost and Stress Score.
 
-The released public v2.0 validator defines checks for flow conservation, no-subtour blocking sequences, yard track limits, handling capacity, minimum block volume, physical-link capacity, maximum circuitous ratio, single-path uniqueness, commodity-type separation, direct-only Intermodal/Automobile routing, and demand-volume consistency.
+The released public v2.1 validator defines checks for flow conservation, no-subtour blocking sequences, yard track limits, handling capacity, minimum block volume, physical-link capacity, maximum circuitous ratio, single-path uniqueness, commodity-type separation, direct-only Intermodal/Automobile routing, and demand-volume consistency.
 
 ## Checks
 
@@ -29,7 +29,7 @@ A blocking sequence may not revisit a yard.
 
 ### C2 — Classification-yard track limit
 
-The public v2.0 interpretation counts only Manifest, Coal, and Grain classification blocks. Intermodal and Automobile blocks are not counted by this check.
+The v2.1 benchmark classification rule counts Manifest/Bulk blocks in this clean-room model; Coal and Grain are represented as the canonical Bulk block type. Intermodal and Automobile blocks are not counted by this check.
 
 ### C3 — Yard handling capacity
 
@@ -69,7 +69,7 @@ Operating cost = fixed + transport + handling + interchange.
 
 Transport uses the physical route actually assigned to each block. Handling is charged at intermediate classification yards.
 
-Interchange follows the public v2.0 two-endpoint Class-I rule: compare the railroad of the block origin and destination yards; charge one interchange when both are recognized Class-I railroads and differ; normalize CSXT to CSX; intermediate physical-path nodes do not create additional interchange charges.
+Interchange follows the public v2.1 two-endpoint Class-I rule: compare the railroad of the block origin and destination yards; charge one interchange when both are recognized Class-I railroads and differ; normalize CSXT to CSX; intermediate physical-path nodes do not create additional interchange charges.
 
 ## Stress Score
 
@@ -95,5 +95,5 @@ BenchmarkAuthority  ← independent authority
 cost / feasibility / Stress Score
 ```
 
-The public benchmark package and its v2.0 fast validator are the external reference for this layer:
+The public benchmark package and its v2.1 validator are the external reference for this layer:
 https://github.com/asu-trans-ai-lab/RAS2026-PSC
