@@ -18,6 +18,7 @@ from jev_rbp.problem import (
     Solution,
 )
 from jev_rbp.routing import DijkstraRouter
+from jev_rbp.objective import evaluate_solution
 
 
 def _instance():
@@ -116,3 +117,36 @@ def test_candidate_yard_filter_is_optional():
     )
 
     assert generator._build_candidates() == ()
+
+
+def test_move_objective_matches_benchmark_and_includes_interchange():
+    instance = _instance()
+    instance.nodes[1] = Node(
+        1, "yard", num_tracks=3, handling_cost=4.0, railroad_id="BNSF"
+    )
+    instance.nodes[3] = Node(
+        3, "yard", num_tracks=3, handling_cost=8.0, railroad_id="CSXT"
+    )
+    router = DijkstraRouter(instance)
+    evaluator = ExactRBPMoveEvaluator(MoveContext(instance, router))
+
+    evaluation = evaluator.evaluate(
+        _via_state(),
+        AddAction(1, 3, CommodityType.MERCHANDISE),
+    )
+
+    assert evaluation.feasible
+    from jev_rbp.benchmark import BenchmarkAuthority
+
+    candidate = RBPMoveApplier(MoveContext(instance, router)).apply(
+        _via_state(),
+        AddAction(1, 3, CommodityType.MERCHANDISE),
+    )
+    objective = evaluate_solution(instance, candidate, router)
+    benchmark = BenchmarkAuthority(instance).validate(candidate)
+
+    assert benchmark.feasible
+    assert benchmark.cost is not None
+    assert objective.total == benchmark.cost.total
+    assert objective.interchange > 0.0
+    assert evaluation.objective_after == benchmark.cost.total
