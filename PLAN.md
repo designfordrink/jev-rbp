@@ -23,6 +23,49 @@ Current status:
 - [ ] record first scientific results;
 - [ ] add runtime and repeated-seed measurements.
 
+## Current research gate
+
+**Reference Reconstruction comes before further JEV claims.**
+
+The next step is to reproduce Nicolas Bridelance's reference point using the
+archived Greedy, VLNS and MIP implementations, then compare it with the
+clean-room solver.
+
+See [docs/reference-reconstruction.md](docs/reference-reconstruction.md).
+
+- [x] reference provenance inventory;
+- [x] archived Greedy / VLNS / MIP identified;
+- [x] reconstruction protocol documented;
+- [ ] freeze the deterministic small common instance;
+- [ ] reproduce Greedy;
+- [ ] reproduce VLNS;
+- [ ] reproduce MIP;
+- [ ] differential comparison;
+- [ ] freeze reference result;
+- [ ] resume controlled JEV comparison.
+
+**Scientific rule:** no JEV quality claim is promoted to a research result
+until this gate is complete.
+
+## Reference Reconstruction
+
+1. **Greedy** — constructive baseline and VLNS warm start.
+2. **VLNS** — scalable search baseline.
+3. **MIP (Mixed-Integer Programming)** — exact or near-exact teacher on small
+   instances.
+
+The MIP result is called an optimum only when optimality is proved; otherwise
+the recorded MIP gap is part of the result.
+
+## Research Gate J — JEV after reference
+
+After the reference gate is green, compare Vanilla, Random, Greedy and Linear
+JEV under the same candidate generator, exact evaluator, validator, initial
+solution and acceptance semantics.
+
+Use K = 1, 2, 5, 10, 20, 50, all where practical. The central measurement is
+quality versus exact evaluations / compute, not score alone.
+
 ## Scientific rule
 
 At every JEV comparison, keep constant:
