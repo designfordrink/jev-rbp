@@ -69,33 +69,34 @@ Therefore JEV is a **selector**, not a source of truth.
 
 ## Current implementation status
 
-**Phase 3 — clean-room vanilla VLNS reproduction**
+**Phase 9 — controlled real-data experiment v2**
 
 Implemented:
 
-- canonical RBP data model;
-- GMNS/RAS CSV loader;
+- clean-room RBP model and public-data loader;
 - bidirectional physical shortest-path routing;
-- directed block-service graph;
-- commodity rerouting through opened blocks;
-- block-volume aggregation;
-- removal of unused opened blocks after rerouting;
-- typed Drop/Add/Swap actions;
-- reference-shaped Drop → Add → conditional Swap orchestration;
-- deterministic selector baselines;
-- independent seed validator;
-- initial objective components;
-- regression tests for physical and service routing.
+- directed block-service routing;
+- benchmark-authoritative Drop/Add/Swap evaluation;
+- full benchmark feasibility checks at search acceptance/final scoring;
+- canonical shared VLNS control flow;
+- Random, Identity, RBP Greedy and Linear JEV selectors;
+- deterministic JEV dataset collection;
+- multi-case train/test split by case;
+- fixed exact-evaluation budgets K=1/5/10;
+- controlled real RAS L1 experiment v2;
+- optional Vanilla VLNS full-candidate baseline.
 
-Still to implement:
+The current experiment cases are demand subsets of one L1 physical network, so
+they are **not independent benchmark instances**. They are suitable for testing
+selector behavior across demand patterns, but not for claiming cross-network
+generalization or an official competition score.
 
-- complete reference-equivalent candidate generation and filters;
-- exact Drop/Add/Swap move evaluator over the real RBP state;
-- full C1–C9b benchmark validator;
-- complete operating objective including handling and interchange;
-- link-capacity-aware physical block routing;
-- benchmark runner and experiment artifacts;
-- trace generation for JEV training.
+Next:
+
+- execute and analyze the v2 real-data run;
+- measure runtime and repeated seeds;
+- build genuinely independent small instances for stronger generalization tests;
+- then redesign JEV ranking features/model (JEV v1).
 
 The project intentionally separates **archaeology** from **implementation**:
 the recovered competition/reference code remains under \`data/reference/archive/\`
