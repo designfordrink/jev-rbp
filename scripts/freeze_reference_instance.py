@@ -84,7 +84,7 @@ def main() -> None:
     counts = validate_source(source)
 
     output.mkdir(parents=True, exist_ok=True)
-
+\n    if any((output / name).exists() for name in ("nodes.csv", "links.csv", "demands.csv", "setting.csv", "manifest.json")):\n        raise SystemExit(\n            f"Refusing to overwrite an existing freeze directory: {output}"\n        )\n
     files = ["nodes.csv", "links.csv", "demands.csv", "setting.csv"]
     manifest = {
         "reference": "Nicolas Bridelance toy instance",
