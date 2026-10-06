@@ -2,7 +2,7 @@
 
 The first reconstruction target is the toy instance used by Nicolas Bridelance's saved MIP and VLNS notebooks: **8 yards / 50 commodities**.
 
-## Current status: BLOCKED on exact source input
+## Current status: BLOCKED on exact source input\n\nFreeze tooling is now implemented and covered by tests. The blocker is only acquisition of the original four CSV files.
 
 The repository contains the archived solver implementation and saved notebooks, but **does not currently contain the four source CSV files used by the notebook run**:
 
@@ -30,7 +30,7 @@ The notebooks identify the expected scale (8 yards / 50 commodities), but the in
 
 ## Freeze protocol
 
-Once the exact source directory is found, run:
+Once the exact source directory is found, run (the tool now exists at `scripts/freeze_reference_instance.py`):
 
 ```bash
 python scripts/freeze_reference_instance.py \
@@ -58,7 +58,7 @@ R1 is complete only when:
 4. Greedy, VLNS and MIP can all load the frozen directory;
 5. their outputs, objective, feasibility, runtime and solver parameters are captured by `scripts/run_reference_reconstruction.py`.
 
-Until these conditions are met, **no numerical claim about reproducing the Nicolas reference result should be made**.
+Until these conditions are met, **no numerical claim about reproducing the Nicolas reference result should be made**. The freeze tests use an explicitly synthetic temporary fixture; they are software tests, not the R1 reference data.
 
 ## Next acquisition targets
 
