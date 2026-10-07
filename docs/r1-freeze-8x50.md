@@ -71,3 +71,82 @@ Search in this order:
 5. only after exhausting the above, construct a clearly labelled synthetic micro-instance for software testing.
 
 The target is the **original input**, not merely any dataset on which the archived solver can run.
+
+## Provenance audit — Kaggle notebooks
+
+The three Nicolas Bridelance notebooks were checked as the authoritative notebook references for R1:
+
+- MIP: https://www.kaggle.com/code/nbridelancetb/railroad-blocking-mip-pyomo-highs
+- EDA + Greedy: https://www.kaggle.com/code/nbridelancetb/railroad-blocking-eda-greedy-baseline
+- VLNS: https://www.kaggle.com/code/nbridelancetb/railroad-blocking-vlns-metaheuristic
+
+They point to the Kaggle dataset **RBP Railroad Blocking - Solver Utilities**:
+
+- https://www.kaggle.com/datasets/nbridelancetb/rbp-railroad-blocking-utils
+
+This is important because it gives us the provenance target: the historical R1 inputs must be recovered from the dataset/version attached to these notebooks, rather than from the current competition data.
+
+### What the Kaggle pages establish
+
+- The notebooks are Nicolas Bridelance's MIP, EDA/Greedy, and VLNS reference notebooks.
+- The notebook input is the **RBP Railroad Blocking - Solver Utilities** dataset.
+- The repository's `data/reference/archive/` is a provenance copy of the solver-side code, not a copy of the notebook input dataset.
+- The exact historical CSV payload is still not exposed by the Kaggle page HTML available to our tooling. Therefore the exact 8×50 CSV contents have **not** been independently recovered yet.
+
+### What we must not infer
+
+The current INFORMS RAS 2026 competition data page is a different artifact:
+
+- https://www.kaggle.com/competitions/informs-ras-2026-problem-solving-competition/data
+
+Its current L1/L2/L3 instances are not evidence for the historical 8×50 notebook input. Do not substitute them for R1.
+
+Likewise, the existence of `nodes.csv`, `links.csv`, `demands.csv`, and `setting.csv` in the solver/data model tells us the expected four input roles, but does not by itself prove that a particular downloaded version is Nicolas's 8×50 run.
+
+## Exact acquisition procedure
+
+The next reproducible acquisition attempt should be performed with authenticated Kaggle CLI/API access, because the public notebook HTML/API surface available here does not expose the dataset file payload.
+
+Record the exact dataset version before copying anything:
+
+```bash
+kaggle datasets files -d nbridelancetb/rbp-railroad-blocking-utils
+```
+
+Then download the identified version into a temporary directory, preserving the original archive/file names:
+
+```bash
+mkdir -p data/reference/reconstruction/_acquisition
+kaggle datasets download \
+  -d nbridelancetb/rbp-railroad-blocking-utils \
+  -p data/reference/reconstruction/_acquisition
+```
+
+If the dataset exposes multiple versions, repeat the download for each candidate version and record the version number, archive SHA-256, and extracted file list. Do **not** run the freeze tool until a candidate contains an 8-yard / 50-commodity input.
+
+For each candidate, inspect:
+
+```text
+nodes.csv
+links.csv
+demands.csv
+setting.csv
+```
+
+and record:
+
+- exact dataset/version identifier;
+- exact filenames;
+- row counts;
+- number of `node_type=yard` rows;
+- demand/commodity row count;
+- SHA-256 of every CSV;
+- whether the reference loader accepts the directory unchanged.
+
+Only a candidate satisfying the 8×50 acceptance condition can be promoted to `data/reference/reconstruction/8x50/`.
+
+### Current conclusion
+
+**The R1 question is now narrowed to dataset-version recovery.** We have the three reference notebooks, the named Kaggle input dataset, and the reference solver archive. The remaining missing artifact is the exact historical input payload/version used for the 8×50 run.
+
+No synthetic replacement has been promoted, and no numerical reproduction claim has been made.
