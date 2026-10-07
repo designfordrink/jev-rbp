@@ -150,3 +150,14 @@ Only a candidate satisfying the 8×50 acceptance condition can be promoted to `d
 **The R1 question is now narrowed to dataset-version recovery.** We have the three reference notebooks, the named Kaggle input dataset, and the reference solver archive. The remaining missing artifact is the exact historical input payload/version used for the 8×50 run.
 
 No synthetic replacement has been promoted, and no numerical reproduction claim has been made.
+
+## Candidate audit tool
+
+A downloaded Kaggle dataset/archive can now be checked without modifying or promoting it:
+
+```bash
+python scripts/audit_kaggle_candidate.py /path/to/downloaded/archive.zip
+python scripts/audit_kaggle_candidate.py /path/to/extracted/directory --json
+```
+
+The auditor searches recursively for the four expected input files, validates the R1 shape (8 yard rows and 50 demand rows), and reports byte size plus SHA-256 for each CSV. A candidate is **not** promoted automatically. Promotion still requires provenance confirmation that it is the historical dataset/version attached to Nicolas's notebook.
