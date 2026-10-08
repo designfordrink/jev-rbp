@@ -71,38 +71,56 @@ JEV появляется только после стабилизации это
 
 ## Текущий статус
 
-**Phase 3 — clean-room воспроизведение vanilla VLNS**
+**Phase 9 — controlled real-data experiment v2 реализован.**
 
-Уже реализовано:
+В репозитории уже есть:
 
-- каноническая модель RBP;
-- загрузчик GMNS/RAS CSV;
-- двунаправленный shortest-path routing физической сети;
-- отдельный направленный граф блоков;
-- rerouting грузов через открытые блоки;
-- агрегация объёмов блоков;
-- удаление открытых, но фактически не используемых блоков;
-- типизированные Drop/Add/Swap actions;
-- control flow Drop → Add → conditional Swap;
-- детерминированные baseline-selectors;
-- независимый seed-validator;
-- начальные компоненты objective;
-- regression tests для физической и сервисной маршрутизации.
+- canonical RBP model и loader;
+- независимый benchmark authority;
+- общий Drop → Add → conditional Swap engine;
+- Random / Identity / RBP Greedy / Linear JEV selectors;
+- JEV dataset и fixed-budget experiment harness;
+- Nicolas reference freeze/audit tooling;
+- **R1-C specification и instance-design checker**.
 
-Ещё предстоит:
+Сейчас проект разделён на два независимых исследовательских потока.
 
-- полностью восстановить candidate generation и фильтры reference VLNS;
-- реализовать точный Drop/Add/Swap move evaluator;
-- реализовать полный benchmark Validator C1–C9b;
-- реализовать полный operating objective: fixed + transport + handling +
-  interchange;
-- учитывать capacity при выборе физических маршрутов;
-- сделать benchmark runner и reproducible artifacts;
-- собирать traces для обучения JEV.
+### Historical Nicolas reconstruction
 
-Reference-код не копируется в \`src/\`. Восстановленная реализация хранится в
-\`data/reference/archive/\` как археологический источник. Основной solver
-пишется заново, чтобы отделить поведение алгоритма от исторической реализации.
+Мы сохраняем архивный Nicolas Greedy/VLNS/MIP и notebooks как provenance.
+Точный исторический input 8×50 пока не восстановлен; численные claims о
+воспроизведении Nicolas не делаются.
+
+### R1-C controlled benchmark
+
+R1-C — наш собственный, явно маркированный controlled benchmark family.
+Он не выдаётся за Nicolas 8×50.
+
+Текущий pipeline:
+
+```
+R1-C specification
+      ↓
+instance-design checker        ✅
+      ↓
+constrained generator          ← следующий шаг
+      ↓
+R1-C8x50-A
+      ↓
+Greedy / Vanilla VLNS / MIP
+      ↓
+P1–P7 audit
+      ↓
+freeze
+      ↓
+JEV experiment
+```
+
+Подробнее:
+
+- [R1-C specification](docs/r1-controlled-8x50-spec.md)
+- [R1-C checker](docs/r1-controlled-8x50-checker.md)
+- [Reference Reconstruction](docs/reference-reconstruction.md)
 
 ## Два разных графа
 
