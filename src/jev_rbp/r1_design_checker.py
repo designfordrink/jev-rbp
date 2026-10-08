@@ -504,7 +504,7 @@ def check_instance(
                 d1, _, shortest_links = shortest
                 pair_distances[(source, target)] = d1
                 second = _second_path(adjacency, shortest_links, source, target)
-                if second is not None and second[0] > d1 + 1e-9:
+                if second is not None:
                     alternative_pairs += 1
                     ratio = second[0] / d1
                     second_path_ratios.append(ratio)
@@ -673,7 +673,7 @@ def check_instance(
     # evaluation. It answers whether the input contains plausible bottlenecks.
     link_load = defaultdict(float)
     yard_classification_pressure = defaultdict(float)
-    node_by_id = {_node_id(row): row for row in instance.nodes}
+    yard_by_id = {_node_id(row): row for row in yards}
     for demand in demand_rows:
         route = _dijkstra(adjacency, demand["origin"], demand["destination"])
         if route is None:
@@ -682,7 +682,7 @@ def check_instance(
         for link_id in path_links:
             link_load[link_id] += demand["volume"]
         for node in path_nodes[1:-1]:
-            if node in node_by_id:
+            if node in yard_by_id:
                 yard_classification_pressure[node] += demand["volume"]
 
     utilization = {}
@@ -693,7 +693,7 @@ def check_instance(
     potential_link_bottlenecks = sum(value >= 0.5 for value in top_link_util)
     yard_utilization = {}
     for yard_id, pressure in yard_classification_pressure.items():
-        capacity = float(_column(node_by_id[yard_id], "handling_capacity") or 0)
+        capacity = float(_column(yard_by_id[yard_id], "handling_capacity") or 0)
         yard_utilization[yard_id] = pressure / capacity if capacity > 0 else math.inf
     potential_yard_bottlenecks = sum(value >= 0.5 for value in yard_utilization.values())
     bottleneck_ok = potential_link_bottlenecks >= 2 and potential_yard_bottlenecks >= 2
