@@ -2,8 +2,9 @@
 
 ## Status
 
-**Design gate.** This document defines the controlled benchmark before any generator or
-frozen input is created.
+**Design gate implemented.** The specification below defines the controlled benchmark
+before any generator or frozen input is created. The companion instance-design checker
+is now implemented and is the first executable gate against this specification.
 
 R1-C is a parallel experimental track. It does **not** replace the historical Nicolas
 8×50 provenance track. The latter remains useful for archaeology and reproduction,
