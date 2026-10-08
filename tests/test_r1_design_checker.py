@@ -48,7 +48,7 @@ def _make_fixture(root: Path, *, connected: bool = True, bad_direct: bool = Fals
              (5, 6, 150), (6, 7, 150), (7, 8, 150), (8, 1, 220)]
     chords = [(2, 7, 260), (3, 6, 260), (4, 8, 250)]
     for u, v, length in chain + chords:
-        if not connected and (u, v) == (8, 1):
+        if not connected and (u == 8 or v == 8):
             continue
         edges.append(
             {
