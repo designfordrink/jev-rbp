@@ -25,27 +25,46 @@ Current status:
 
 ## Current research gate
 
-**Reference Reconstruction comes before further JEV claims.**
+**Reference Reconstruction and R1-C are now parallel tracks.**
 
-The next step is to reproduce Nicolas Bridelance's reference point using the
-archived Greedy, VLNS and MIP implementations, then compare it with the
-clean-room solver.
+The historical Nicolas reconstruction remains the provenance track:
+- recover the exact 8×50 source input if it can be established;
+- run the archived Greedy / VLNS / MIP;
+- perform differential comparison against the clean-room implementation.
 
-See [docs/reference-reconstruction.md](docs/reference-reconstruction.md).
+At the same time, JEV research is no longer blocked on that historical input. R1-C is
+the controlled-benchmark track for building a reproducible small family specifically
+designed to expose non-trivial Drop/Add/Swap decision surfaces.
 
+See:
+- [docs/reference-reconstruction.md](docs/reference-reconstruction.md)
+- [docs/r1-freeze-8x50.md](docs/r1-freeze-8x50.md)
+- [docs/r1-controlled-8x50-spec.md](docs/r1-controlled-8x50-spec.md)
+
+Historical reference track:
 - [x] reference provenance inventory;
 - [x] archived Greedy / VLNS / MIP identified;
 - [x] reconstruction protocol documented;
-- [ ] freeze the deterministic small common instance;
-- [ ] reproduce Greedy;
-- [ ] reproduce VLNS;
-- [ ] reproduce MIP;
+- [x] deterministic freeze tooling;
+- [x] non-destructive Kaggle candidate auditor;
+- [ ] recover exact historical 8×50 source;
+- [ ] reproduce Greedy / VLNS / MIP on the frozen historical input;
 - [ ] differential comparison;
-- [ ] freeze reference result;
-- [ ] resume controlled JEV comparison.
+- [ ] freeze reference result.
 
-**Scientific rule:** no JEV quality claim is promoted to a research result
-until this gate is complete.
+R1-C controlled benchmark track:
+- [x] inspect reference solver/data model;
+- [x] define controlled 8×50 benchmark specification;
+- [ ] implement instance-design checker;
+- [ ] implement constrained generator;
+- [ ] generate R1-C8x50-A;
+- [ ] validate P1–P7 search phenomena;
+- [ ] run Greedy / Vanilla VLNS / MIP audit;
+- [ ] freeze instance and metadata;
+- [ ] resume quantitative JEV comparison.
+
+**Scientific rule:** Nicolas provenance and controlled synthetic benchmark results are
+reported as different evidence streams. Neither may be presented as the other.
 
 ## Reference Reconstruction
 
