@@ -14,7 +14,6 @@ import argparse
 import csv
 import json
 import math
-import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from heapq import heappop, heappush
