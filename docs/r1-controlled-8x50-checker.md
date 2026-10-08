@@ -50,12 +50,14 @@ The checker separates inexpensive structural checks from dynamic search evidence
 
 It checks:
 
+- input/schema integrity and unique node/link/demand identifiers;
 - exactly 8 yards;
 - exactly 50 demands;
 - 20 Merchandise + 10 Coal + 10 Grain + 5 Intermodal + 5 Automobile;
 - yard heterogeneity: yard types, track counts, handling capacities/costs,
   railroad identities and interchange yards;
 - physical-network connectivity;
+- at least two independent cycle/chord structures;
 - at least 6 yard pairs with an alternative physical path;
 - at least 3 of those alternative paths within the configured maximum
   circuitous ratio;
