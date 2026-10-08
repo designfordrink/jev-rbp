@@ -385,6 +385,28 @@ def check_instance(
         details={"errors": schema_failures},
     )
 
+    # Identifier integrity is a basic prerequisite for every later solver audit.
+    id_errors = []
+    for label, rows, getter in (
+        ("nodes", instance.nodes, _node_id),
+        ("links", instance.links, _link_id),
+        ("demands", instance.demands, lambda row: int(_column(row, "demand_id"))),
+    ):
+        try:
+            ids = [getter(row) for row in rows]
+            if len(ids) != len(set(ids)):
+                id_errors.append(f"{label}: duplicate identifiers")
+        except (TypeError, ValueError):
+            id_errors.append(f"{label}: non-numeric identifiers")
+    report.add(
+        "identifier_integrity",
+        "PASS" if not id_errors else "FAIL",
+        "Node, link and demand identifiers are unique and numeric."
+        if not id_errors
+        else "; ".join(id_errors),
+        details={"errors": id_errors},
+    )
+
     yards = [
         row for row in instance.nodes
         if _column(row, "node_type").strip().lower() == "yard"
@@ -471,7 +493,15 @@ def check_instance(
         },
     )
 
-    adjacency, links = _build_graph(instance)
+    try:
+        adjacency, links = _build_graph(instance)
+    except (TypeError, ValueError, KeyError) as exc:
+        report.add(
+            "physical_connectivity",
+            "FAIL",
+            f"Physical links could not be parsed: {exc}",
+        )
+        return report
     yard_ids = [_node_id(row) for row in yards]
     connected = True
     if yard_ids:
@@ -511,7 +541,23 @@ def check_instance(
                     if ratio <= _settings(instance)["ratio"] + 1e-9:
                         near_alternative_pairs += 1
 
-    alternative_ok = alternative_pairs >= 6 and near_alternative_pairs >= 3
+    cycle_rank = max(len(links) - len(yard_ids) + 1, 0)
+    redundancy_ok = cycle_rank >= 2
+    report.add(
+        "network_redundancy",
+        "PASS" if redundancy_ok else "FAIL",
+        (
+            "The network contains at least two independent cycle/chord structures."
+            if redundancy_ok
+            else f"Cycle rank is {cycle_rank}; required >= 2."
+        ),
+        details={"cycle_rank": cycle_rank, "links": len(links), "yards": len(yard_ids)},
+    )
+
+    alternative_ok = (
+        alternative_pairs >= 6
+        and near_alternative_pairs >= 3
+    )
     report.add(
         "alternative_routes",
         "PASS" if alternative_ok else "FAIL",
