@@ -444,22 +444,24 @@ Full v2.1-compatible work must add handling + interchange and the shared flow ca
 
 ## 10. Phase 3A conclusion
 
-Phase 3A establishes the benchmark contract needed to implement the next step without guessing from the Kaggle notebook.
+Phase 3A established the public RAS v2.1 benchmark contract. The repository has
+since progressed beyond the original implementation order: the clean-room model,
+independent benchmark authority, routing/service separation, benchmark-aligned
+objective and canonical VLNS control flow are already implemented.
 
-The next phase is intentionally **not** another archaeology pass:
+The remaining reference discrepancies are tracked as explicit research questions.
+This document is therefore **benchmark archaeology and contract evidence**, not the
+current implementation roadmap.
 
-> **Phase 3B — reconcile `solution_result` + validator + sample solutions with `problem.py`, then implement the real RBP solution state and exact evaluator.**
+For current project state, see [PLAN.md](../PLAN.md).
 
-Primary implementation order:
+The next benchmark engineering gate is R1-C:
 
-1. split demand commodity type from block type;
-2. make demand volume numerically compatible with scenario scaling;
-3. align Node/Link metadata;
-4. introduce benchmark-compatible solution serialization;
-5. implement block-service graph semantics;
-6. implement exact objective;
-7. implement Drop/Add/Swap with rerouting;
-8. only then wire best-improving VLNS.
+> **Define → check → generate → audit → freeze a controlled small instance.**
+
+The R1-C design is specified in
+[docs/r1-controlled-8x50-spec.md](r1-controlled-8x50-spec.md), and the first
+engineering gate is the [instance-design checker](r1-controlled-8x50-checker.md).
 
 ## Sources
 
