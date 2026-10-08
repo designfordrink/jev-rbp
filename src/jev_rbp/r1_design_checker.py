@@ -448,7 +448,7 @@ def check_instance(
             float(_column(row, "handling_capacity") or 0)
         )
         handling_costs.append(float(_column(row, "handling_cost") or 0))
-        yard_types.add(_column(row, "yard_type").strip().lower())
+        yard_types[_column(row, "yard_type").strip().lower()] += 1
         rr = _column(row, "railroad_id").strip()
         if rr:
             railroads.add(rr.upper())
