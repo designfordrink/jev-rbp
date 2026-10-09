@@ -106,7 +106,7 @@ R1-C specification
       ↓
 instance-design checker        ✅
       ↓
-constrained generator          ← next
+constrained generator          ✅ scaffold
       ↓
 R1-C8x50-A
       ↓
@@ -304,3 +304,14 @@ comparison is controlled and reproducible.
 
 The broader JEV-Star architecture is documented separately from this
 RBP-specific implementation.
+
+## Verify before pushing
+
+Run the same test and lint checks as CI before committing or pushing:
+
+```bash
+python -m pip install -e ".[dev]"
+bash scripts/verify.sh
+```
+
+See [Local verification](docs/local-verification.md). The local preflight catches common failures (including Ruff line-length errors) before they become failed GitHub Actions runs; CI still validates the pushed commit independently.
