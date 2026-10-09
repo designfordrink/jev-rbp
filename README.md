@@ -311,6 +311,7 @@ Run the same test and lint checks as CI before committing or pushing:
 
 ```bash
 python -m pip install -e ".[dev]"
+pre-commit install  # once per local clone
 bash scripts/verify.sh
 ```
 
