@@ -1,5 +1,31 @@
 # JEV-RBP — Product Requirements Document
 
+## 0. Текущее состояние проекта
+
+На текущем checkpoint программная база Phase 0–9 реализована: есть canonical RBP
+model, независимый benchmark authority, общий VLNS engine, selector baselines,
+JEV dataset и controlled real-data experiment v2.
+
+Исследовательская работа теперь разделена на два потока:
+
+1. **Historical Nicolas Reconstruction** — строгая попытка восстановить
+   исторический 8×50 input и сравнить archived Greedy/VLNS/MIP с clean-room
+   implementation. Точный исходный input пока не подтверждён.
+2. **R1-C Controlled Benchmark** — собственный воспроизводимый benchmark family
+   для проверки гипотезы о JEV. Он не является реконструкцией Nicolas.
+
+Для R1-C уже подготовлены:
+- спецификация controlled 8×50 benchmark;
+- instance-design checker.
+
+Следующий этап: constrained generator → R1-C8x50-A → Greedy/Vanilla VLNS/MIP
+audit → P1–P7 search audit → freeze → quantitative JEV experiment.
+
+Важно: результаты R1-C и Nicolas reconstruction являются разными evidence
+streams и не должны смешиваться.
+
+---
+
 ## 1. Назначение
 
 **JEV-RBP** — исследовательский прототип гибридной системы решения Railroad Blocking Problem (RBP), в которой:

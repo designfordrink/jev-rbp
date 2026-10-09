@@ -69,39 +69,62 @@ Therefore JEV is a **selector**, not a source of truth.
 
 ## Current implementation status
 
-**Phase 9 — controlled real-data experiment v2**
+**Phase 9 — controlled real-data experiment v2: implemented.**
 
-Implemented:
+The repository now contains:
 
 - clean-room RBP model and public-data loader;
-- bidirectional physical shortest-path routing;
-- directed block-service routing;
-- benchmark-authoritative Drop/Add/Swap evaluation;
-- full benchmark feasibility checks at search acceptance/final scoring;
-- canonical shared VLNS control flow;
+- benchmark-authoritative evaluation boundary;
+- canonical Drop → Add → conditional Swap VLNS control flow;
 - Random, Identity, RBP Greedy and Linear JEV selectors;
-- deterministic JEV dataset collection;
-- multi-case train/test split by case;
-- fixed exact-evaluation budgets K=1/5/10;
-- controlled real RAS L1 experiment v2;
-- optional Vanilla VLNS full-candidate baseline.
+- deterministic JEV dataset collection and fixed-budget experiments;
+- Nicolas reference freeze and Kaggle candidate-audit tooling;
+- **R1-C controlled benchmark specification and instance-design checker**.
 
-The current experiment cases are demand subsets of one L1 physical network, so
-they are **not independent benchmark instances**. They are suitable for testing
-selector behavior across demand patterns, but not for claiming cross-network
-generalization or an official competition score.
+### Current research state
 
-Next:
+There are two separate evidence tracks.
 
-- execute and analyze the v2 real-data run;
-- measure runtime and repeated seeds;
-- build genuinely independent small instances for stronger generalization tests;
-- then redesign JEV ranking features/model (JEV v1).
+**Historical Nicolas reconstruction**
+
+The archived Nicolas Greedy/VLNS/MIP code, notebooks and provenance material remain
+under `data/reference/archive/`. The exact historical 8×50 input has not been
+recovered, so no Nicolas numerical reproduction claim is made.
+
+See [Reference Reconstruction](docs/reference-reconstruction.md) and
+[8×50 freeze protocol](docs/r1-freeze-8x50.md).
+
+**R1-C controlled benchmark**
+
+R1-C is our explicitly labelled controlled benchmark family for JEV. It is not the
+Nicolas instance.
+
+Current pipeline:
+
+```
+R1-C specification
+      ↓
+instance-design checker        ✅
+      ↓
+constrained generator          ← next
+      ↓
+R1-C8x50-A
+      ↓
+Greedy / Vanilla VLNS / MIP
+      ↓
+P1–P7 search audit
+      ↓
+freeze
+      ↓
+JEV experiment
+```
+
+The current real-L1 experiment remains prototype evidence: its cases share one
+physical network and therefore do not establish cross-network generalization or an
+official competition score.
 
 The project intentionally separates **archaeology** from **implementation**:
-the recovered competition/reference code remains under \`data/reference/archive/\`
-as provenance material; the solver itself is a clean-room implementation of
-the documented behavior.
+recovered reference code is provenance material; the solver is clean-room code.
 
 ## Architecture
 
@@ -218,6 +241,7 @@ jev-rbp/
 │   ├── io.py
 │   ├── objective.py
 │   ├── problem.py
+│   ├── r1_design_checker.py
 │   ├── rerouting.py
 │   ├── routing.py
 │   ├── selectors.py
@@ -262,6 +286,8 @@ jev-rbp
 - [Benchmark archaeology](docs/benchmark-archaeology.md) — RAS v2.1 contract.
 - [Experiments](docs/experiments.md) — controlled experiment protocol.
 - [RBP model](docs/rbp.md) — canonical problem definition.
+- [R1-C specification](docs/r1-controlled-8x50-spec.md) — controlled benchmark design.
+- [R1-C checker](docs/r1-controlled-8x50-checker.md) — design-gate tooling.
 
 ## References
 

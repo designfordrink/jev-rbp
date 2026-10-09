@@ -2,69 +2,72 @@
 
 ## Current checkpoint
 
-**Phase 9 — Controlled real-data experiment v2 implemented.**
+**Phase 9 implementation is complete; the project is now in the R1 research gates.**
 
-Phase 8 established JEV v0 and grouped ranking metrics. Phase 9 now adds the
-reproducible runner that compares selectors over the same RBP instances while
-keeping the candidate generator, exact evaluator, validator, initial solution,
-and exact-evaluation budget fixed.
+The repository has the controlled real-data experiment v2 machinery, but the next
+scientific milestone is an independent controlled benchmark on which the selector
+hypothesis can be tested without depending on the unrecovered historical Nicolas
+8×50 input.
 
-Current status:
-- [x] deterministic linear JEV scorer;
-- [x] train/test split by instance;
-- [x] Top-K hit-rate and exact-delta regret metrics;
-- [x] multi-instance selector experiment runner;
-- [x] exact-evaluation budget accounting;
-- [x] benchmark-authority final scoring;
-- [x] runner unit tests;
-- [ ] download/prepare a frozen set of public L1 instances;
-- [ ] generate the first real multi-instance JEV dataset;
-- [ ] run Identity / Random / RBP Greedy / Linear JEV under K=1, 5, 10;
-- [ ] record first scientific results;
-- [ ] add runtime and repeated-seed measurements.
+### Active research tracks
+
+**Historical Nicolas reconstruction**
+- recover the exact historical 8×50 source if it can be established;
+- run archived Greedy / VLNS / MIP;
+- perform differential comparison;
+- do not make numerical reproduction claims before the exact input is frozen.
+
+**R1-C controlled benchmark**
+- define the controlled benchmark;
+- implement the design checker;
+- implement the constrained generator;
+- generate R1-C8x50-A;
+- audit P1–P7 search phenomena;
+- run Greedy / Vanilla VLNS / MIP;
+- freeze the accepted instance;
+- then resume quantitative JEV comparison.
+
+See [docs/reference-reconstruction.md](docs/reference-reconstruction.md),
+[docs/r1-controlled-8x50-spec.md](docs/r1-controlled-8x50-spec.md) and
+[docs/r1-controlled-8x50-checker.md](docs/r1-controlled-8x50-checker.md).
 
 ## Current research gate
 
-**Reference Reconstruction comes before further JEV claims.**
+**Reference Reconstruction and R1-C are parallel tracks.**
 
-The next step is to reproduce Nicolas Bridelance's reference point using the
-archived Greedy, VLNS and MIP implementations, then compare it with the
-clean-room solver.
-
-See [docs/reference-reconstruction.md](docs/reference-reconstruction.md).
-
+Historical Nicolas track:
 - [x] reference provenance inventory;
 - [x] archived Greedy / VLNS / MIP identified;
 - [x] reconstruction protocol documented;
-- [ ] freeze the deterministic small common instance;
-- [ ] reproduce Greedy;
-- [ ] reproduce VLNS;
-- [ ] reproduce MIP;
+- [x] deterministic freeze tooling;
+- [x] non-destructive Kaggle candidate auditor;
+- [ ] recover exact historical 8×50 source;
+- [ ] reproduce Greedy / VLNS / MIP on frozen historical input;
 - [ ] differential comparison;
-- [ ] freeze reference result;
-- [ ] resume controlled JEV comparison.
+- [ ] freeze reference result.
 
-**Scientific rule:** no JEV quality claim is promoted to a research result
-until this gate is complete.
+R1-C controlled benchmark track:
+- [x] inspect reference solver/data model;
+- [x] define controlled 8×50 benchmark specification;
+- [x] implement instance-design checker;
+- [ ] implement constrained generator;
+- [ ] generate R1-C8x50-A;
+- [ ] validate P1–P7 search phenomena;
+- [ ] run Greedy / Vanilla VLNS / MIP audit;
+- [ ] freeze instance and metadata;
+- [ ] resume quantitative JEV comparison.
 
-## Reference Reconstruction
-
-1. **Greedy** — constructive baseline and VLNS warm start.
-2. **VLNS** — scalable search baseline.
-3. **MIP (Mixed-Integer Programming)** — exact or near-exact teacher on small
-   instances.
-
-The MIP result is called an optimum only when optimality is proved; otherwise
-the recorded MIP gap is part of the result.
+**Scientific rule:** Nicolas provenance and controlled synthetic benchmark results
+are different evidence streams and must never be presented as the other.
 
 ## Research Gate J — JEV after reference
 
-After the reference gate is green, compare Vanilla, Random, Greedy and Linear
-JEV under the same candidate generator, exact evaluator, validator, initial
-solution and acceptance semantics.
+After the reference or controlled-benchmark gate is green, compare Vanilla, Random,
+Greedy and Linear JEV under the same candidate generator, exact evaluator,
+validator, initial solution and exact-evaluation budget.
 
 Use K = 1, 2, 5, 10, 20, 50, all where practical. The central measurement is
-quality versus exact evaluations / compute, not score alone.
+quality versus exact evaluations / compute.
 
 ## Scientific rule
 
@@ -82,9 +85,9 @@ Dataset generation may spend an unlimited exact-evaluation budget because it is
 a separate offline labeling stage. Search comparisons must use the declared
 per-phase exact-evaluation budget.
 
-An Oracle selector is an **upper bound**, not a valid JEV competitor: it uses
-the exact evaluator to rank candidates and therefore violates the information
-boundary of the learned selector.
+An Oracle selector is an **upper bound**, not a valid JEV competitor: it uses the
+exact evaluator to rank candidates and therefore violates the information boundary
+of the learned selector.
 
 ## Phase 0 — Repository foundation
 
