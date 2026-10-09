@@ -135,12 +135,18 @@ def build_candidate(seed: int, output: Path) -> dict:
     hashes = {}
     for name in ("nodes.csv", "links.csv", "demands.csv", "setting.csv"):
         hashes[name] = hashlib.sha256((output / name).read_bytes()).hexdigest()
+    try:
+        source_commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        source_commit = "unknown (run outside a Git checkout)"
     manifest = {
         "benchmark_id": "R1-C8x50-A",
         "generator": GENERATOR_VERSION,
         "seed": seed,
         "parameters": {"yards": 8, "demands": 50, "topology": "fixed 8-node ring plus 3 chords"},
-        "source_commit": "record the git commit used to run this generator",
+        "source_commit": source_commit,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "schema_version": "RBP/RAS v2.1 compatible CSV; design-checker schema",
         "sha256": hashes,
