@@ -29,7 +29,9 @@ LINK_FIELDS = [
     "link_id", "from_node_id", "to_node_id", "length", "capacity",
     "railroad_id", "free_speed", "tracks", "geometry",
 ]
-DEMAND_FIELDS = ["demand_id", "origin_yard_id", "dest_yard_id", "volume", "commodity_type", "block_type"]
+DEMAND_FIELDS = [
+    "demand_id", "origin_yard_id", "dest_yard_id", "volume", "commodity_type", "block_type"
+]
 SETTING_FIELDS = ["parameter", "value"]
 
 YARDS = [
@@ -175,9 +177,15 @@ def main() -> int:
     if result.stderr:
         print(result.stderr, file=sys.stderr, end="")
     if result.returncode != 0:
-        print("Candidate rejected by static checker; do not freeze or use for JEV claims.", file=sys.stderr)
+        print(
+            "Candidate rejected by static checker; do not freeze or use for JEV claims.",
+            file=sys.stderr,
+        )
         return result.returncode
-    print("Static gate passed. This is not yet a frozen/accepted benchmark: run solver audit and P1-P7.")
+    print(
+        "Static gate passed. This is not yet a frozen/accepted benchmark: "
+        "run solver audit and P1-P7."
+    )
     return 0
 
 
