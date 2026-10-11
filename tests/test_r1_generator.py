@@ -1,7 +1,17 @@
 from __future__ import annotations
 
-from scripts.generate_r1_instance import build_candidate
+import importlib.util
+from pathlib import Path
+
 from jev_rbp.r1_design_checker import check_instance
+
+
+_GENERATOR_PATH = Path(__file__).parents[1] / "scripts" / "generate_r1_instance.py"
+_SPEC = importlib.util.spec_from_file_location("generate_r1_instance", _GENERATOR_PATH)
+assert _SPEC is not None and _SPEC.loader is not None
+_GENERATOR = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_GENERATOR)
+build_candidate = _GENERATOR.build_candidate
 
 
 def test_structured_candidate_passes_static_design_gate(tmp_path):
