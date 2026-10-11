@@ -184,7 +184,10 @@ def build_candidate(seed: int, output: Path) -> dict:
         "benchmark_id": "R1-C8x50-A",
         "generator": GENERATOR_VERSION,
         "seed": seed,
-        "parameters": {"yards": 8, "demands": 50, "topology": "fixed 8-node ring plus 3 chords", "demand_design": "four competing-hub Merchandise markets plus seeded remaining classes"},
+        "parameters": {"yards": 8, "demands": 50, "topology": "fixed 8-node ring plus 3 chords",
+            "demand_design": (
+                "four competing-hub Merchandise markets plus seeded remaining classes"
+            )},
         "source_commit": source_commit,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "schema_version": "RBP/RAS v2.1 compatible CSV; design-checker schema",
