@@ -50,8 +50,8 @@ R1-C controlled benchmark track:
 - [x] inspect reference solver/data model;
 - [x] define controlled 8×50 benchmark specification;
 - [x] implement instance-design checker;
-- [x] implement first-pass deterministic generator scaffold (static rejection gate; not yet a search/repair generator);
-- [ ] generate R1-C8x50-A;
+- [x] implement deterministic structured candidate generator and explicit static-only gate (still not a search/repair generator);
+- [ ] generate and static-check R1-C8x50-A;
 - [ ] validate P1–P7 search phenomena;
 - [ ] run Greedy / Vanilla VLNS / MIP audit;
 - [ ] freeze instance and metadata;

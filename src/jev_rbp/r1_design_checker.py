@@ -334,6 +334,7 @@ def check_instance(
     path: str | Path,
     *,
     evidence: dict[str, Any] | None = None,
+    include_dynamic: bool = True,
 ) -> DesignReport:
     root = Path(path).resolve()
     report = DesignReport(str(root))
@@ -762,31 +763,32 @@ def check_instance(
         },
     )
 
-    evidence_map = evidence.get("phenomena", {}) if evidence else {}
-    for i in range(1, 8):
-        name = f"P{i}"
-        item = evidence_map.get(name)
-        if item is None:
-            report.add(
-                name,
-                "NOT_EVALUATED",
-                "Dynamic search evidence was not supplied.",
-                required=True,
-            )
-        elif item.get("observed") is True:
-            report.add(
-                name,
-                "PASS",
-                item.get("summary", f"{name} observed in search evidence."),
-                details=item,
-            )
-        else:
-            report.add(
-                name,
-                "FAIL",
-                item.get("summary", f"{name} not observed."),
-                details=item,
-            )
+    if include_dynamic:
+        evidence_map = evidence.get("phenomena", {}) if evidence else {}
+        for i in range(1, 8):
+            name = f"P{i}"
+            item = evidence_map.get(name)
+            if item is None:
+                report.add(
+                    name,
+                    "NOT_EVALUATED",
+                    "Dynamic search evidence was not supplied.",
+                    required=True,
+                )
+            elif item.get("observed") is True:
+                report.add(
+                    name,
+                    "PASS",
+                    item.get("summary", f"{name} observed in search evidence."),
+                    details=item,
+                )
+            else:
+                report.add(
+                    name,
+                    "FAIL",
+                    item.get("summary", f"{name} not observed."),
+                    details=item,
+                )
 
     return report
 
@@ -812,6 +814,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("instance", type=Path)
     parser.add_argument("--evidence", type=Path)
+    parser.add_argument(
+        "--static-only",
+        action="store_true",
+        help="Check design-time constraints only; omit dynamic P1-P7 evidence checks.",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -821,7 +828,11 @@ def main(argv: list[str] | None = None) -> int:
             evidence = json.load(fh)
 
     return _print_report(
-        check_instance(args.instance, evidence=evidence),
+        check_instance(
+            args.instance,
+            evidence=evidence,
+            include_dynamic=not args.static_only,
+        ),
         as_json=args.json,
     )
 
