@@ -212,7 +212,7 @@ def _link_id(row: dict[str, str]) -> int:
 
 
 def _demand_type(row: dict[str, str]) -> str:
-    value = _column(row, "block_type", "commodity_type")
+    value = _column(row, "commodity_type", "block_type")
     # A few historical files use legacy capitalization/spelling only.
     aliases = {
         "merchandise": "Merchandise",
