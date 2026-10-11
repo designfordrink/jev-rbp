@@ -17,7 +17,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-GENERATOR_VERSION = "r1c-generator-0.1.0"
+GENERATOR_VERSION = "r1c-generator-0.2.0"
 
 NODE_FIELDS = [
     "node_id", "node_type", "name", "x_coord", "y_coord", "yard_type",
@@ -100,32 +100,69 @@ def build_candidate(seed: int, output: Path) -> dict:
             "tracks": 1, "geometry": "",
         })
 
-    # Spread O-D pairs over the graph. The seed controls demand ordering/volume,
-    # not topology or type counts, making candidates reproducible and comparable.
+    # Build four explicit competing-hub markets. Each target demand is below
+    # its direct-block minimum, while both two-leg routes have supported
+    # Merchandise segments. This creates a meaningful static decision surface
+    # instead of hoping that random OD/type assignments produce one.
+    target_patterns = [
+        (1, 5, ((1, 2), (2, 5)), ((1, 4), (4, 5))),
+        (2, 6, ((2, 3), (3, 6)), ((2, 5), (5, 6))),
+        (3, 7, ((3, 4), (4, 7)), ((3, 6), (6, 7))),
+        (4, 8, ((4, 5), (5, 8)), ((4, 7), (7, 8))),
+    ]
+    merchandise_demands = []
+    for origin, destination, route_a, route_b in target_patterns:
+        for u, v in (*route_a, *route_b):
+            merchandise_demands.append(
+                {
+                    "origin_yard_id": u,
+                    "dest_yard_id": v,
+                    "volume": 1300,
+                    "commodity_type": "Merchandise",
+                    "block_type": "Manifest",
+                }
+            )
+        merchandise_demands.append(
+            {
+                "origin_yard_id": origin,
+                "dest_yard_id": destination,
+                "volume": 250,
+                "commodity_type": "Merchandise",
+                "block_type": "Manifest",
+            }
+        )
+
+    # Keep the required type counts exact. Other commodity classes use seeded
+    # OD/volume assignments; direct-only classes receive enough volume for even
+    # the longest distance-band minimum.
+    remaining_specs = []
+    for commodity, block_type, count in DEMAND_COUNTS:
+        if commodity == "Merchandise":
+            continue
+        remaining_specs.extend([(commodity, block_type)] * count)
+    rng.shuffle(remaining_specs)
     pairs = [(u, v) for u in range(1, 9) for v in range(1, 9) if u != v]
     rng.shuffle(pairs)
-    # Use both directions of selected pairs; no demand has identical endpoints.
-    demand_specs = []
-    for commodity, block_type, count in DEMAND_COUNTS:
-        for _ in range(count):
-            demand_specs.append((commodity, block_type))
-    rng.shuffle(demand_specs)
-    demands = []
-    for demand_id, (commodity, block_type) in enumerate(demand_specs, start=1):
-        origin, destination = pairs[(demand_id - 1) % len(pairs)]
+
+    demands = list(merchandise_demands)
+    for index, (commodity, block_type) in enumerate(remaining_specs):
+        origin, destination = pairs[index]
         if commodity in {"Intermodal", "Automobile"}:
             volume = rng.choice([1200, 1350, 1500, 1650])
         else:
             volume = rng.choice([250, 400, 550, 750, 900, 1100, 1300])
-        demands.append({
-            "demand_id": demand_id, "origin_yard_id": origin,
-            "dest_yard_id": destination, "volume": volume,
-            "commodity_type": commodity, "block_type": commodity,
-        })
-    # Checker uses block_type as the demand/commodity label; preserve block_type
-    # as the canonical type and commodity_type as the same compatibility value.
-    for row in demands:
-        row["block_type"] = row["commodity_type"]
+        demands.append(
+            {
+                "origin_yard_id": origin,
+                "dest_yard_id": destination,
+                "volume": volume,
+                "commodity_type": commodity,
+                "block_type": block_type,
+            }
+        )
+
+    for demand_id, row in enumerate(demands, start=1):
+        row["demand_id"] = demand_id
 
     write_csv(output / "nodes.csv", NODE_FIELDS, nodes)
     write_csv(output / "links.csv", LINK_FIELDS, links)
@@ -147,7 +184,10 @@ def build_candidate(seed: int, output: Path) -> dict:
         "benchmark_id": "R1-C8x50-A",
         "generator": GENERATOR_VERSION,
         "seed": seed,
-        "parameters": {"yards": 8, "demands": 50, "topology": "fixed 8-node ring plus 3 chords"},
+        "parameters": {"yards": 8, "demands": 50, "topology": "fixed 8-node ring plus 3 chords",
+            "demand_design": (
+                "four competing-hub Merchandise markets plus seeded remaining classes"
+            )},
         "source_commit": source_commit,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "schema_version": "RBP/RAS v2.1 compatible CSV; design-checker schema",
@@ -169,7 +209,13 @@ def main() -> int:
     print(f"Generated candidate {manifest['benchmark_id']} at {args.output} (seed={args.seed}).")
     print("Running static design checker; dynamic P1-P7 remain unevaluated.")
     result = subprocess.run(
-        [sys.executable, str(args.checker), str(args.output), "--json"],
+        [
+            sys.executable,
+            str(args.checker),
+            str(args.output),
+            "--json",
+            "--static-only",
+        ],
         check=False, text=True, capture_output=True,
     )
     if result.stdout:
