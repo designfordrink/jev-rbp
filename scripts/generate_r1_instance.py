@@ -128,7 +128,7 @@ def build_candidate(seed: int, output: Path) -> dict:
                 "dest_yard_id": destination,
                 "volume": 250,
                 "commodity_type": "Merchandise",
-                "block_type": "Merchandise",
+                "block_type": "Manifest",
             }
         )
 
